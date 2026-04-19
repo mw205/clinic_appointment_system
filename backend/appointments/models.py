@@ -4,10 +4,10 @@ from django.db import models
 
 class Appointment(models.Model):
     class Status(models.TextChoices):
-        SCHEDULED = "scheduled", "Scheduled"
+        REQUESTED = "requested", "Requested"
         CONFIRMED = "confirmed", "Confirmed"
-        COMPLETED = "completed", "Completed"
         CANCELLED = "cancelled", "Cancelled"
+        COMPLETED = "completed", "Completed"
         NO_SHOW = "no_show", "No Show"
 
     patient = models.ForeignKey(
@@ -25,7 +25,7 @@ class Appointment(models.Model):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.SCHEDULED,
+        default=Status.REQUESTED,
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
