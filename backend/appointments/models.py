@@ -31,8 +31,14 @@ class Appointment(models.Model):
 
     class Meta:
         ordering = ["-start_time"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["doctor", "start_time"],
+                name="unique_doctor_start_time",
+            )
+        ]
         indexes = [
-            models.Index(fields=["doctor", "start_time"]),
+            models.Index(fields=["start_time"]),
             models.Index(fields=["patient", "start_time"]),
             models.Index(fields=["status", "start_time"]),
         ]
