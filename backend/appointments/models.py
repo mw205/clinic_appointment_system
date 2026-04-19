@@ -3,6 +3,8 @@ from django.db import models
 
 
 class Appointment(models.Model):
+    """Stores a single booking between a patient and a doctor."""
+
     class Status(models.TextChoices):
         REQUESTED = "requested", "Requested"
         CONFIRMED = "confirmed", "Confirmed"
@@ -47,4 +49,35 @@ class Appointment(models.Model):
         return (
             f"{self.get_status_display()} appointment "
             f"({self.start_time:%Y-%m-%d %H:%M} - {self.end_time:%H:%M})"
+        )
+
+
+class RescheduleHistory(models.Model):
+    appointment = models.ForeignKey(
+        Appointment,
+        on_delete=models.CASCADE,
+        related_name="reschedule_history",
+    )
+    old_start_time = models.DateTimeField()
+    new_start_time = models.DateTimeField()
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="appointment_reschedule_changes",
+    )
+    reason = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["appointment", "timestamp"]),
+            models.Index(fields=["changed_by", "timestamp"]),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"Reschedule for appointment #{self.appointment_id}: "
+            f"{self.old_start_time:%Y-%m-%d %H:%M} -> "
+            f"{self.new_start_time:%Y-%m-%d %H:%M}"
         )
