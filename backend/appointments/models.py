@@ -9,6 +9,7 @@ class Appointment(models.Model):
         REQUESTED = "requested", "Requested"
         CONFIRMED = "confirmed", "Confirmed"
         CANCELLED = "cancelled", "Cancelled"
+        CHECKED_IN = "checked_in", "Checked In"
         COMPLETED = "completed", "Completed"
         NO_SHOW = "no_show", "No Show"
 
@@ -24,6 +25,7 @@ class Appointment(models.Model):
     )
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
+    check_in_time = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
