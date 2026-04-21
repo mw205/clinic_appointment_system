@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from accounts.models import DoctorProfile, PatientProfile
 from appointments.models import Appointment
@@ -26,6 +27,17 @@ class PatientOverlapError(ValidationError):
 
 class BufferTimeViolationError(ValidationError):
     pass
+
+
+def create_appointment_from_slot(patient, slot):
+    if slot is None or getattr(slot, "pk", None) is None:
+        raise SlotUnavailableError({"slot_id": "A valid slot_id is required."})
+
+    return create_appointment(
+        patient=patient,
+        doctor=slot.doctor,
+        start_time=slot.start_time,
+    )
 
 
 def create_appointment(patient, doctor, start_time):
@@ -113,7 +125,12 @@ def normalize_start_time(start_time):
     if not isinstance(start_time, datetime):
         raise ValidationError({"start_time": "Start time must be a datetime."})
 
-    if start_time <= datetime.now():
+    if timezone.is_aware(start_time):
+        now_value = timezone.now()
+    else:
+        now_value = datetime.now()
+
+    if start_time <= now_value:
         raise ValidationError({"start_time": "Start time must be in the future."})
 
     return start_time
