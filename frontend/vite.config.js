@@ -10,7 +10,11 @@ export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
+    
   ],
+  build: {
+    cssMinify: false
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
