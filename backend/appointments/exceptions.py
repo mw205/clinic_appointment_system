@@ -16,15 +16,16 @@ class BookingBadRequestError(APIException):
 
     @classmethod
     def from_django_validation_error(cls, exc):
-        if hasattr(exc, "message_dict") and exc.message_dict:
-            first_key = next(iter(exc.message_dict))
-            value = exc.message_dict[first_key]
-            if isinstance(value, list) and value:
-                return cls(message=str(value[0]))
-            return cls(message=str(value))
+        message_dict = getattr(exc, "message_dict", None)
+        if message_dict:
+            first_value = next(iter(message_dict.values()))
+            if isinstance(first_value, list):
+                return cls(message=str(first_value[0] if first_value else ""))
+            return cls(message=str(first_value))
 
-        if hasattr(exc, "messages") and exc.messages:
-            return cls(message=str(exc.messages[0]))
+        messages = getattr(exc, "messages", None)
+        if messages:
+            return cls(message=str(messages[0]))
 
         return cls()
 
