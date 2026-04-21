@@ -1,11 +1,12 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from appointments.exceptions import BookingBadRequestError
 from appointments.api.permissions import IsPatientOrReceptionistRole
 from appointments.api.serializers import (
     AppointmentBookingRequestSerializer,
@@ -29,9 +30,7 @@ class AppointmentBookingCreateAPIView(APIView):
                 slot=serializer.validated_data["slot"],
             )
         except DjangoValidationError as exc:
-            if hasattr(exc, "message_dict"):
-                raise ValidationError(exc.message_dict)
-            raise ValidationError({"detail": exc.messages})
+            raise BookingBadRequestError.from_django_validation_error(exc)
 
         response_serializer = AppointmentBookingResponseSerializer(appointment)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
@@ -49,7 +48,7 @@ class AppointmentBookingCreateAPIView(APIView):
         if requester_role == "receptionist":
             requested_patient = validated_data.get("patient")
             if requested_patient is None:
-                raise ValidationError({"patient_id": "This field is required for receptionists."})
+                raise BookingBadRequestError("patient_id is required for receptionists.")
             return requested_patient
 
 

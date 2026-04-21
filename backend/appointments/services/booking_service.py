@@ -6,6 +6,12 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import DoctorProfile, PatientProfile
+from appointments.exceptions import (
+    BufferTimeViolationError,
+    DoctorBookedError,
+    PatientOverlapError,
+    SlotUnavailableError,
+)
 from appointments.models import Appointment
 from scheduling.models import DoctorSlot
 
@@ -13,25 +19,9 @@ from scheduling.models import DoctorSlot
 DEFAULT_BUFFER_TIME_MINUTES = 5
 
 
-class SlotUnavailableError(ValidationError):
-    pass
-
-
-class DoctorBookedError(ValidationError):
-    pass
-
-
-class PatientOverlapError(ValidationError):
-    pass
-
-
-class BufferTimeViolationError(ValidationError):
-    pass
-
-
 def create_appointment_from_slot(patient, slot):
     if slot is None or getattr(slot, "pk", None) is None:
-        raise SlotUnavailableError({"slot_id": "A valid slot_id is required."})
+        raise SlotUnavailableError("A valid slot_id is required.")
 
     return create_appointment(
         patient=patient,
@@ -52,9 +42,7 @@ def create_appointment(patient, doctor, start_time):
     with transaction.atomic():
         locked_slot = lock_available_slot(doctor_profile, normalized_start_time)
         if locked_slot is None:
-            raise SlotUnavailableError(
-                {"start_time": "Requested slot is no longer available."}
-            )
+            raise SlotUnavailableError("Requested slot is no longer available.")
 
         normalized_end_time = normalize_slot_end_time(locked_slot.end_time)
 
@@ -78,9 +66,7 @@ def create_appointment(patient, doctor, start_time):
             locked_slot.appointment = appointment
             locked_slot.save(update_fields=["is_available", "appointment", "updated_at"])
         except IntegrityError as exc:
-            raise DoctorBookedError(
-                {"start_time": "Booking conflict detected. Please try a different slot."}
-            ) from exc
+            raise DoctorBookedError("Doctor already booked for this slot.") from exc
 
         return appointment
 
@@ -148,13 +134,9 @@ def normalize_slot_end_time(end_time):
 def validate_slot_availability(doctor_profile, start_time):
     slot = fetch_slot_from_scheduling(doctor_profile, start_time)
     if slot is None:
-        raise SlotUnavailableError(
-            {"start_time": "Requested slot does not exist in scheduling."}
-        )
+        raise SlotUnavailableError("Requested slot does not exist in scheduling.")
     if not slot.is_available:
-        raise SlotUnavailableError(
-            {"start_time": "Requested slot is not available."}
-        )
+        raise SlotUnavailableError("Requested slot is not available.")
     return slot
 
 
@@ -188,9 +170,7 @@ def check_doctor_conflict(doctor_profile, start_time, end_time):
         start_time,
         end_time,
     ):
-        raise DoctorBookedError(
-            {"start_time": "Doctor is already booked at this time."}
-        )
+        raise DoctorBookedError("Doctor already booked for this slot.")
 
 
 def check_patient_overlap(patient_profile, start_time, end_time):
@@ -199,9 +179,7 @@ def check_patient_overlap(patient_profile, start_time, end_time):
         start_time,
         end_time,
     ):
-        raise PatientOverlapError(
-            {"start_time": "Patient already has an overlapping appointment."}
-        )
+        raise PatientOverlapError("Patient already has an overlapping appointment.")
 
 
 def apply_buffer_time_rules(doctor_profile, start_time, end_time, buffer_minutes):
@@ -217,11 +195,7 @@ def apply_buffer_time_rules(doctor_profile, start_time, end_time, buffer_minutes
         window_end,
     ):
         raise BufferTimeViolationError(
-            {
-                "start_time": (
-                    f"Doctor buffer time of {buffer_minutes} minutes is not respected."
-                )
-            }
+            f"Doctor buffer time of {buffer_minutes} minutes is not respected."
         )
 
 def has_appointment_overlap(queryset, start_time, end_time):
