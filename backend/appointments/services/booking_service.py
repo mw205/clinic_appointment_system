@@ -38,11 +38,13 @@ def create_appointment(patient, doctor, start_time):
     buffer_minutes = resolve_buffer_minutes(slot)
 
     with transaction.atomic():
-        locked_slot = lock_available_slot(slot.id)
+        locked_slot = lock_available_slot(doctor_profile, normalized_start_time)
         if locked_slot is None:
             raise SlotUnavailableError(
                 {"start_time": "Requested slot is no longer available."}
             )
+
+        normalized_end_time = normalize_slot_end_time(locked_slot.end_time)
 
         check_doctor_conflict(doctor_profile, normalized_start_time, normalized_end_time)
         check_patient_overlap(patient_profile, normalized_start_time, normalized_end_time)
@@ -60,14 +62,14 @@ def create_appointment(patient, doctor, start_time):
                 start_time=normalized_start_time,
                 end_time=normalized_end_time,
             )
+            locked_slot.is_available = False
+            locked_slot.appointment = appointment
+            locked_slot.save(update_fields=["is_available", "appointment", "updated_at"])
         except IntegrityError as exc:
             raise DoctorBookedError(
-                {"start_time": "Doctor is already booked at this time."}
+                {"start_time": "Booking conflict detected. Please try a different slot."}
             ) from exc
 
-        locked_slot.is_available = False
-        locked_slot.appointment = appointment
-        locked_slot.save(update_fields=["is_available", "appointment", "updated_at"])
         return appointment
 
 
@@ -150,11 +152,12 @@ def fetch_slot_from_scheduling(doctor_profile, start_time):
     )
 
 
-def lock_available_slot(slot_id):
+def lock_available_slot(doctor_profile, start_time):
     return (
         DoctorSlot.objects.select_for_update()
         .filter(
-            id=slot_id,
+            doctor=doctor_profile,
+            start_time=start_time,
             is_available=True,
             appointment__isnull=True,
         )
@@ -210,11 +213,15 @@ def has_appointment_overlap(queryset, start_time, end_time):
         Appointment.Status.CONFIRMED,
         Appointment.Status.CHECKED_IN,
     ]
-    return queryset.filter(
-        start_time__lt=end_time,
-        end_time__gt=start_time,
-        status__in=blocking_statuses,
-    ).exists()
+    return (
+        queryset.select_for_update()
+        .filter(
+            start_time__lt=end_time,
+            end_time__gt=start_time,
+            status__in=blocking_statuses,
+        )
+        .exists()
+    )
 
 
 def resolve_buffer_minutes(slot):
