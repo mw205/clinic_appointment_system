@@ -1,10 +1,10 @@
 from django.conf import settings
 from django.db import models
 
+from accounts.models import DoctorProfile, PatientProfile
+
 
 class Appointment(models.Model):
-    """Stores a single booking between a patient and a doctor."""
-
     class Status(models.TextChoices):
         REQUESTED = "requested", "Requested"
         CONFIRMED = "confirmed", "Confirmed"
@@ -14,12 +14,12 @@ class Appointment(models.Model):
         NO_SHOW = "no_show", "No Show"
 
     patient = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        PatientProfile,
         on_delete=models.CASCADE,
         related_name="patient_appointments",
     )
     doctor = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        DoctorProfile,
         on_delete=models.CASCADE,
         related_name="doctor_appointments",
     )

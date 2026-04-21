@@ -2,54 +2,81 @@ from rest_framework import serializers
 
 from accounts.api.serializers import DoctorProfileModelSerializer
 from accounts.models import DoctorProfile
-from scheduling.models import DoctorSchedule
+from scheduling.models import DoctorSchedule, DoctorSlot
 
 
 class DoctorScheduleModelSerializer(serializers.ModelSerializer):
     doctor = DoctorProfileModelSerializer(read_only=True)
     doctor_id = serializers.PrimaryKeyRelatedField(
         queryset=DoctorProfile.objects.all(),
-        source='doctor',
+        source="doctor",
         write_only=True,
     )
 
     class Meta:
-        fields = [
-            'id',
-            'doctor',
-            'doctor_id',
-            'day_of_week',
-            'start_time',
-            'end_time',
-            'updated_at',
-            'created_at',
-        ]
-        read_only_fields = ['updated_at', 'created_at', 'id']
         model = DoctorSchedule
+        fields = [
+            "id",
+            "doctor",
+            "doctor_id",
+            "day_of_week",
+            "start_time",
+            "end_time",
+            "slot_duration_minutes",
+            "buffer_time_minutes",
+            "updated_at",
+            "created_at",
+        ]
+        read_only_fields = ["id", "updated_at", "created_at"]
 
-        def validate(self, attrs):
-            start_time = attrs.get("start_time")
-            end_time = attrs.get("end_time")
-            # validate the start time that it can't be after end time
-            if start_time and end_time and start_time >= end_time:
-                raise serializers.ValidationError({
-                    "end_time": "End time must be after start time."
-                })
+    def validate(self, attrs):
+        start_time = attrs.get("start_time", getattr(self.instance, "start_time", None))
+        end_time = attrs.get("end_time", getattr(self.instance, "end_time", None))
+        day_of_week = attrs.get("day_of_week", getattr(self.instance, "day_of_week", None))
+        doctor = attrs.get("doctor", getattr(self.instance, "doctor", None))
 
-            # ensure that there are no overlapping schedules for the same doctor
-            doctor = attrs.get('doctor')
-            if doctor and start_time and end_time:
-                overlapping_schedules = DoctorSchedule.objects.filter(
-                    doctor=doctor,
-                    start_time__lt=end_time,
-                    end_time__gt=start_time,
-                )
+        if start_time and end_time and start_time >= end_time:
+            raise serializers.ValidationError(
+                {"end_time": "End time must be after start time."}
+            )
+
+        if doctor and day_of_week and start_time and end_time:
+            overlapping_schedules = DoctorSchedule.objects.filter(
+                doctor=doctor,
+                day_of_week=day_of_week,
+                start_time__lt=end_time,
+                end_time__gt=start_time,
+            )
             if self.instance:
-                overlapping_schedules = overlapping_schedules.exclude(
-                    id=self.instance.id
-                )
+                overlapping_schedules = overlapping_schedules.exclude(id=self.instance.id)
             if overlapping_schedules.exists():
                 raise serializers.ValidationError(
                     "This doctor already has a schedule during this time."
                 )
-            return attrs
+
+        return attrs
+
+
+class DoctorSlotModelSerializer(serializers.ModelSerializer):
+    doctor = DoctorProfileModelSerializer(read_only=True)
+    doctor_id = serializers.PrimaryKeyRelatedField(
+        queryset=DoctorProfile.objects.all(),
+        source="doctor",
+        write_only=True,
+    )
+
+    class Meta:
+        model = DoctorSlot
+        fields = [
+            "id",
+            "doctor",
+            "doctor_id",
+            "schedule",
+            "start_time",
+            "end_time",
+            "is_available",
+            "appointment",
+            "updated_at",
+            "created_at",
+        ]
+        read_only_fields = ["id", "updated_at", "created_at", "appointment"]
