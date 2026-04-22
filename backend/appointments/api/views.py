@@ -16,6 +16,32 @@ from appointments.models import Appointment
 from appointments.services.booking_service import create_appointment_from_slot
 
 
+def get_role_filtered_appointments_queryset(user):
+    queryset = Appointment.objects.select_related(
+        "patient__user",
+        "doctor__user",
+    ).order_by("-start_time")
+
+    group_names = {
+        name.strip().lower()
+        for name in user.groups.values_list("name", flat=True)
+    }
+    user_role = (getattr(user, "role", "") or "").lower()
+    user_roles = set(group_names)
+    if user_role:
+        user_roles.add(user_role)
+
+    if user.is_staff or "admin" in user_roles:
+        return queryset
+    if "receptionist" in user_roles:
+        return queryset
+    if "doctor" in user_roles:
+        return queryset.filter(doctor__user=user)
+    if "patient" in user_roles:
+        return queryset.filter(patient__user=user)
+    return queryset.none()
+
+
 class AppointmentListCreateAPIView(generics.ListCreateAPIView):
     queryset = Appointment.objects.none()
 
@@ -30,20 +56,7 @@ class AppointmentListCreateAPIView(generics.ListCreateAPIView):
         return AppointmentReadSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = Appointment.objects.select_related(
-            "patient__user",
-            "doctor__user",
-        ).order_by("-start_time")
-
-        role = getattr(user, "role", None)
-        if role == "patient":
-            return queryset.filter(patient__user=user)
-        if role == "doctor":
-            return queryset.filter(doctor__user=user)
-        if role in {"receptionist", "admin"} or user.is_staff:
-            return queryset
-        return queryset.none()
+        return get_role_filtered_appointments_queryset(self.request.user)
 
     def create(self, request):
         serializer = AppointmentBookingRequestSerializer(data=request.data)
@@ -85,20 +98,7 @@ class AppointmentRetrieveAPIView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = Appointment.objects.select_related(
-            "patient__user",
-            "doctor__user",
-        )
-
-        role = getattr(user, "role", None)
-        if role == "patient":
-            return queryset.filter(patient__user=user)
-        if role == "doctor":
-            return queryset.filter(doctor__user=user)
-        if role in {"receptionist", "admin"} or user.is_staff:
-            return queryset
-        return queryset.none()
+        return get_role_filtered_appointments_queryset(self.request.user)
 
 
 @api_view(["POST"])
