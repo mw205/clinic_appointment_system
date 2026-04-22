@@ -15,7 +15,7 @@ from appointments.exceptions import BookingBadRequestError
 from appointments.api.permissions import IsPatientOrReceptionistRole, IsDoctorRole, IsReceptionistRole
 from appointments.api.serializers import (
     AppointmentBookingRequestSerializer,
-    AppointmentBookingResponseSerializer, DoctorQueueSerializer,
+    AppointmentBookingResponseSerializer, AppointmentSerializer,
 )
 from appointments.models import Appointment
 from appointments.services.booking_service import create_appointment_from_slot
@@ -123,7 +123,7 @@ class AppointmentViewSet(GenericViewSet):
         doctor = request.user
         date = request.GET.get('date')
         queue = get_doctor_queue(doctor.id, date)
-        queue_serializer = DoctorQueueSerializer(queue, many=True)
+        queue_serializer = AppointmentSerializer(queue, many=True, context={"request": request})
         return Response(
             queue_serializer.data,
             status=HTTP_200_OK
