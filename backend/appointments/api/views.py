@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
@@ -9,15 +11,17 @@ from rest_framework.response import Response
 
 from appointments.api.filters import AppointmentFilter
 from appointments.api.pagination import AppointmentListPagination
-from appointments.api.permissions import IsPatientOrReceptionistRole
+from appointments.api.permissions import IsDoctorRole, IsPatientOrReceptionistRole
 from appointments.api.serializers import (
     AppointmentBookingRequestSerializer,
     AppointmentBookingResponseSerializer,
     AppointmentReadSerializer,
+    DoctorQueueSerializer,
 )
 from appointments.exceptions import BookingBadRequestError
 from appointments.models import Appointment
 from appointments.services.booking_service import create_appointment_from_slot
+from appointments.services.queue_service import get_doctor_queue
 
 
 def get_role_filtered_appointments_queryset(user):
@@ -152,3 +156,32 @@ def cancel(request, id):
     appointment.save(update_fields=["status"])
 
     return Response({"message": "Appointment cancelled"})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def check_in(request, id):
+    try:
+        appointment = Appointment.objects.get(id=id)
+    except Appointment.DoesNotExist:
+        raise NotFound("Appointment not found")
+
+    if not request.user.has_perm("appointments.change_appointment"):
+        raise PermissionDenied("You do not have permission")
+    if appointment.status != Appointment.Status.REQUESTED:
+        return Response({"error": "Appointment already processed"}, status=400)
+
+    appointment.status = Appointment.Status.CHECKED_IN
+    appointment.check_in_time = datetime.now()
+    appointment.save(update_fields=["status", "check_in_time"])
+
+    return Response({"message": "Appointment checked in"})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsDoctorRole])
+def doctor_queue(request):
+    date = request.GET.get("date")
+    queue = get_doctor_queue(request.user.id, date)
+    queue_serializer = DoctorQueueSerializer(queue, many=True)
+    return Response(queue_serializer.data)

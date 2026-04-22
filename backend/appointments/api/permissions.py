@@ -11,3 +11,13 @@ class IsPatientOrReceptionistRole(BasePermission):
             and user.is_authenticated
             and getattr(user, "role", None) in {"patient", "receptionist"}
         )
+
+class IsDoctorRole(BasePermission):
+    message = "Only doctors allowed to make this request."
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and getattr(user, "role", None) == "doctor"
+        )
