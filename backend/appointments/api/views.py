@@ -1,25 +1,51 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
-from appointments.exceptions import BookingBadRequestError
 from appointments.api.permissions import IsPatientOrReceptionistRole
 from appointments.api.serializers import (
     AppointmentBookingRequestSerializer,
     AppointmentBookingResponseSerializer,
+    AppointmentReadSerializer,
 )
+from appointments.exceptions import BookingBadRequestError
 from appointments.models import Appointment
 from appointments.services.booking_service import create_appointment_from_slot
 
 
-class AppointmentBookingCreateAPIView(APIView):
-    permission_classes = [IsPatientOrReceptionistRole]
+class AppointmentListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Appointment.objects.none()
 
-    def post(self, request):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsPatientOrReceptionistRole()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AppointmentBookingRequestSerializer
+        return AppointmentReadSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Appointment.objects.select_related(
+            "patient__user",
+            "doctor__user",
+        ).order_by("-start_time")
+
+        role = getattr(user, "role", None)
+        if role == "patient":
+            return queryset.filter(patient__user=user)
+        if role == "doctor":
+            return queryset.filter(doctor__user=user)
+        if role in {"receptionist", "admin"} or user.is_staff:
+            return queryset
+        return queryset.none()
+
+    def create(self, request):
         serializer = AppointmentBookingRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         patient_user = self.resolve_booking_patient_user(request, serializer.validated_data)
@@ -51,6 +77,28 @@ class AppointmentBookingCreateAPIView(APIView):
                 raise BookingBadRequestError("patient_id is required for receptionists.")
             return requested_patient
 
+        raise PermissionDenied("You do not have permission to book appointments.")
+
+
+class AppointmentRetrieveAPIView(generics.RetrieveAPIView):
+    serializer_class = AppointmentReadSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Appointment.objects.select_related(
+            "patient__user",
+            "doctor__user",
+        )
+
+        role = getattr(user, "role", None)
+        if role == "patient":
+            return queryset.filter(patient__user=user)
+        if role == "doctor":
+            return queryset.filter(doctor__user=user)
+        if role in {"receptionist", "admin"} or user.is_staff:
+            return queryset
+        return queryset.none()
 
 
 @api_view(["POST"])
