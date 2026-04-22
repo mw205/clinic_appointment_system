@@ -32,3 +32,15 @@ class AppointmentBookingResponseSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
         ]
+
+class DoctorQueueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = [
+            "id",
+            "doctor",
+            "start_time",
+            "end_time",
+            "check_in_time",
+            "patient"
+        ]
