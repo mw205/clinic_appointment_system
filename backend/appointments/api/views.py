@@ -3,14 +3,16 @@ from datetime import datetime
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.migrations import serializer
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK
 from rest_framework.views import APIView
+from rest_framework.viewsets import ViewSet, GenericViewSet
 
 from appointments.exceptions import BookingBadRequestError
-from appointments.api.permissions import IsPatientOrReceptionistRole, IsDoctorRole
+from appointments.api.permissions import IsPatientOrReceptionistRole, IsDoctorRole, IsReceptionistRole
 from appointments.api.serializers import (
     AppointmentBookingRequestSerializer,
     AppointmentBookingResponseSerializer, DoctorQueueSerializer,
@@ -56,76 +58,73 @@ class AppointmentBookingCreateAPIView(APIView):
             return requested_patient
 
 
-
-@api_view(["POST"])
-# TODO: uncomment line bellow after authentication is implemented
-# @permission_classes([IsAuthenticated])
-def confirm(request, id):
-    try:
-        appointment = Appointment.objects.get(id=id)
-    except Appointment.DoesNotExist:
-        raise NotFound("Appointment not found")
-
-    if not request.user.has_perm("appointments.change_appointment"):
-        raise PermissionDenied("You do not have permission")
-    if appointment.doctor.user_id != request.user.id:
-        raise PermissionDenied("You do not have permission")
-
-    if appointment.status != Appointment.Status.REQUESTED:
-        return Response({"error": "Appointment already processed"}, status=400)
-
-    appointment.status = Appointment.Status.CONFIRMED
-    appointment.save(update_fields=["status"])
-
-    return Response({"message": "Appointment confirmed"})
+class AppointmentViewSet(GenericViewSet):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentBookingResponseSerializer
+    # TODO: uncomment function bellow after authentication is implemented
+    # def get_permissions(self):
+    #     if self.action == "confirm":
+    #         return [IsDoctorRole()]
+    #     if self.action == "cancel":
+    #         return [IsPatientOrReceptionistRole]
+    #     if self.action == "check_in":
+    #         return [IsReceptionistRole]
+    #     return [IsAuthenticated()]
 
 
-@api_view(["POST"])
-# TODO: uncomment line bellow after authentication is implemented
-# @permission_classes([IsAuthenticated])
-def cancel(request, id):
-    try:
-        appointment = Appointment.objects.get(id=id)
-    except Appointment.DoesNotExist:
-        raise NotFound("Appointment not found")
+    @action(detail=True, methods=['post'])
+    def confirm(self, request, pk=None):
+        appointment = self.get_object()
+        if not request.user.has_perm("appointments.change_appointment"):
+            raise PermissionDenied("You do not have permission")
+        if appointment.doctor.user_id != request.user.id:
+            raise PermissionDenied("You do not have permission")
 
-    if not request.user.has_perm("appointments.change_appointment"):
-        raise PermissionDenied("You do not have permission")
-    if appointment.patient.user_id != request.user.id:
-        raise PermissionDenied("You do not have permission")
+        if appointment.status != Appointment.Status.REQUESTED:
+            return Response({"error": "Appointment already processed"}, status=HTTP_400_BAD_REQUEST)
 
-    if appointment.status == Appointment.Status.COMPLETED:
-        return Response({"error": "Appointment already completed"}, status=400)
+        appointment.status = Appointment.Status.CONFIRMED
+        appointment.save(update_fields=["status"])
 
-    appointment.status = Appointment.Status.CANCELLED
-    appointment.save(update_fields=["status"])
+        return Response({"message": "Appointment confirmed"}, status=HTTP_200_OK)
 
-    return Response({"message": "Appointment cancelled"})
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        appointment = self.get_object()
 
-@api_view(["POST"])
-# TODO: uncomment line bellow after authentication is implemented
-# @permission_classes([IsAuthenticated])
-def check_in(request, id):
-    try:
-        appointment = Appointment.objects.get(id=id)
-    except Appointment.DoesNotExist:
-        raise NotFound("Appointment not found")
+        if not request.user.has_perm("appointments.change_appointment"):
+            raise PermissionDenied("You do not have permission")
+        if appointment.patient.user_id != request.user.id:
+            raise PermissionDenied("You do not have permission")
 
-    if not request.user.has_perm("appointments.change_appointment"):
-        raise PermissionDenied("You do not have permission")
-    if appointment.status != Appointment.Status.REQUESTED:
-        return Response({"error": "Appointment already processed"}, status=400)
-    appointment.status = Appointment.Status.CHECKED_IN
-    appointment.check_in_time = datetime.now()
-    appointment.save(update_fields=["status", "check_in_time"])
-    return Response({"message": "Appointment checked in"})
+        if appointment.status == Appointment.Status.COMPLETED:
+            return Response({"error": "Appointment already completed"}, status=HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
-# TODO: uncomment line bellow after authentication is implemented
-# @permission_classes([IsAuthenticated, IsDoctorRole])
-def doctor_queue(request):
-    doctor = request.user
-    date = request.GET.get('date')
-    queue = get_doctor_queue(doctor.id, date)
-    queue_serializer = DoctorQueueSerializer(queue, many=True)
-    return Response(queue_serializer.data)
+        appointment.status = Appointment.Status.CANCELLED
+        appointment.save(update_fields=["status"])
+
+        return Response({"message": "Appointment cancelled"}, status=HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def check_in(self, request, pk=None):
+        appointment = self.get_object()
+
+        if not request.user.has_perm("appointments.change_appointment"):
+            raise PermissionDenied("You do not have permission")
+        if appointment.status != Appointment.Status.REQUESTED:
+            return Response({"error": "Appointment already processed"}, status=HTTP_400_BAD_REQUEST)
+        appointment.status = Appointment.Status.CHECKED_IN
+        appointment.check_in_time = datetime.now()
+        appointment.save()
+        return Response({"message": "Appointment checked in"}, HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='doctor/queue', url_name='doctor-queue')
+    def doctor_queue(self, request):
+        doctor = request.user
+        date = request.GET.get('date')
+        queue = get_doctor_queue(doctor.id, date)
+        queue_serializer = DoctorQueueSerializer(queue, many=True)
+        return Response(
+            queue_serializer.data,
+            status=HTTP_200_OK
+        )
