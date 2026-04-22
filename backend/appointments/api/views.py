@@ -1,10 +1,14 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.filters import OrderingFilter
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from appointments.api.filters import AppointmentFilter
+from appointments.api.pagination import AppointmentListPagination
 from appointments.api.permissions import IsPatientOrReceptionistRole
 from appointments.api.serializers import (
     AppointmentBookingRequestSerializer,
@@ -20,7 +24,7 @@ def get_role_filtered_appointments_queryset(user):
     queryset = Appointment.objects.select_related(
         "patient__user",
         "doctor__user",
-    ).order_by("-start_time")
+    )
 
     group_names = {
         name.strip().lower()
@@ -44,6 +48,11 @@ def get_role_filtered_appointments_queryset(user):
 
 class AppointmentListCreateAPIView(generics.ListCreateAPIView):
     queryset = Appointment.objects.none()
+    pagination_class = AppointmentListPagination
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_class = AppointmentFilter
+    ordering_fields = ["start_time", "created_at"]
+    ordering = ["-start_time"]
 
     def get_permissions(self):
         if self.request.method == "POST":
