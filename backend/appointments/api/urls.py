@@ -3,7 +3,8 @@ from .views import AppointmentBookingCreateAPIView, cancel, confirm, check_in, d
 
 
 urlpatterns = [
-    path("", AppointmentBookingCreateAPIView.as_view(), name="appointment_book"),
+    path("book/", AppointmentBookingCreateAPIView.as_view(),
+         name="appointment_book"),
     path('doctor/queue/', doctor_queue, name="doctor_queue"),
     path('<int:id>/confirm/', confirm, name="appointment_confirm"),
     path('<int:id>/cancel/', cancel, name="appointment_cancel"),
