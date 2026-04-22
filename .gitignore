@@ -30,3 +30,4 @@ Thumbs.db
 .vscode/
 __pycache__/
 *.py[cod]
+.continue/
