@@ -135,6 +135,10 @@ def validate_slot_availability(doctor_profile, start_time):
     slot = fetch_slot_from_scheduling(doctor_profile, start_time)
     if slot is None:
         raise SlotUnavailableError("Requested slot does not exist in scheduling.")
+    if slot.schedule is None:
+        raise ValidationError(
+            {"slot_id": "Requested slot is not linked to a schedule."}
+        )
     if not slot.is_available:
         raise SlotUnavailableError("Requested slot is not available.")
     return slot
