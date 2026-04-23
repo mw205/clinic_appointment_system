@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, status
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.filters import OrderingFilter
 from rest_framework.exceptions import NotFound, PermissionDenied
@@ -50,7 +50,12 @@ def get_role_filtered_appointments_queryset(user):
     return queryset.none()
 
 
-class AppointmentListCreateAPIView(generics.ListCreateAPIView):
+class AppointmentViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
     queryset = Appointment.objects.none()
     pagination_class = AppointmentListPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -59,12 +64,12 @@ class AppointmentListCreateAPIView(generics.ListCreateAPIView):
     ordering = ["-start_time"]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.action == "create":
             return [IsPatientOrReceptionistRole()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
-        if self.request.method == "POST":
+        if self.action == "create":
             return AppointmentBookingRequestSerializer
         return AppointmentReadSerializer
 
@@ -104,14 +109,6 @@ class AppointmentListCreateAPIView(generics.ListCreateAPIView):
             return requested_patient
 
         raise PermissionDenied("You do not have permission to book appointments.")
-
-
-class AppointmentRetrieveAPIView(generics.RetrieveAPIView):
-    serializer_class = AppointmentReadSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return get_role_filtered_appointments_queryset(self.request.user)
 
 
 @api_view(["POST"])
