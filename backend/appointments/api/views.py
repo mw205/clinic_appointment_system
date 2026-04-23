@@ -20,7 +20,7 @@ from appointments.api.serializers import (
 )
 from appointments.exceptions import BookingBadRequestError
 from appointments.models import Appointment
-from appointments.services.booking_service import create_appointment_from_slot
+from appointments.services.booking_service import create_appointment
 from appointments.services.queue_service import get_doctor_queue
 
 
@@ -82,9 +82,10 @@ class AppointmentViewSet(
         patient_user = self.resolve_booking_patient_user(request, serializer.validated_data)
 
         try:
-            appointment = create_appointment_from_slot(
+            appointment = create_appointment(
                 patient=patient_user,
-                slot=serializer.validated_data["slot"],
+                doctor=serializer.validated_data["doctor"],
+                start_time=serializer.validated_data["start_time"],
             )
         except DjangoValidationError as exc:
             raise BookingBadRequestError.from_django_validation_error(exc)

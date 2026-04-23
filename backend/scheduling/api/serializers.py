@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from accounts.api.serializers import DoctorProfileModelSerializer
 from accounts.models import DoctorProfile
-from scheduling.models import DoctorSchedule, DoctorSlot
+from scheduling.models import DoctorSchedule
 
 
 class DoctorScheduleModelSerializer(serializers.ModelSerializer):
@@ -55,28 +55,3 @@ class DoctorScheduleModelSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
-
-
-class DoctorSlotModelSerializer(serializers.ModelSerializer):
-    doctor = DoctorProfileModelSerializer(read_only=True)
-    doctor_id = serializers.PrimaryKeyRelatedField(
-        queryset=DoctorProfile.objects.all(),
-        source="doctor",
-        write_only=True,
-    )
-
-    class Meta:
-        model = DoctorSlot
-        fields = [
-            "id",
-            "doctor",
-            "doctor_id",
-            "schedule",
-            "start_time",
-            "end_time",
-            "is_available",
-            "appointment",
-            "updated_at",
-            "created_at",
-        ]
-        read_only_fields = ["id", "updated_at", "created_at", "appointment"]

@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
+from accounts.models import DoctorProfile
 from accounts.models import User
 from appointments.models import Appointment
-from scheduling.models import DoctorSlot
 
 
 class AppointmentReadSerializer(serializers.ModelSerializer):
@@ -39,10 +39,11 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
 
 
 class AppointmentBookingRequestSerializer(serializers.Serializer):
-    slot_id = serializers.PrimaryKeyRelatedField(
-        queryset=DoctorSlot.objects.all(),
-        source="slot",
+    doctor_id = serializers.PrimaryKeyRelatedField(
+        queryset=DoctorProfile.objects.all(),
+        source="doctor",
     )
+    start_time = serializers.DateTimeField()
     patient_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role="patient"),
         source="patient",
