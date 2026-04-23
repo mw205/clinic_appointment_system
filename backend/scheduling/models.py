@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -28,13 +29,65 @@ class DoctorSchedule(models.Model):
         default=30,
         validators=[MinValueValidator(10)],
     )
-    buffer_time_minutes = models.PositiveIntegerField(
-        default=5,
-    )
+    buffer_time_minutes = models.PositiveIntegerField(default=5)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        if self.start_time and self.end_time and self.start_time >= self.end_time:
+            raise ValidationError("Start time must be earlier than end time.")
+
+        overlapping_schedules = DoctorSchedule.objects.filter(
+            doctor=self.doctor,
+            day_of_week=self.day_of_week,
+        ).exclude(pk=self.pk)
+
+        for existing in overlapping_schedules:
+            if self.start_time < existing.end_time and self.end_time > existing.start_time:
+                raise ValidationError(
+                    f"This schedule overlaps with an existing shift: "
+                    f"{existing.start_time} - {existing.end_time}"
+                )
 
     class Meta:
         indexes = [
             models.Index(fields=["doctor", "day_of_week"]),
+        ]
+
+
+class ScheduleException(models.Model):
+    class ExceptionType(models.TextChoices):
+        OFF = "off", "Day Off/Vacation"
+        WORK = "work", "One-off Working Day"
+
+    doctor = models.ForeignKey(
+        DoctorProfile,
+        on_delete=models.CASCADE,
+        related_name="exceptions",
+    )
+    exception_date = models.DateField()
+    exception_type = models.CharField(choices=ExceptionType.choices, max_length=50)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    reason = models.TextField(blank=True)
+    slot_duration_minutes = models.IntegerField(default=30)
+    buffer_time_minutes = models.IntegerField(default=5)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        if self.exception_type == self.ExceptionType.WORK:
+            if not self.start_time or not self.end_time:
+                raise ValidationError(
+                    {"start_time": "Working exceptions must have start and end times."}
+                )
+            if self.start_time >= self.end_time:
+                raise ValidationError("Start time must be earlier than end time.")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["doctor", "exception_date"],
+                name="unique_doctor_exception_date",
+            )
         ]
