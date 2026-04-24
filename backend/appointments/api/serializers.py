@@ -1,18 +1,53 @@
-from datetime import timezone
-
+from django.utils import timezone
 from rest_framework import serializers
 
-from accounts.api.serializers import DoctorProfileModelSerializer, PatientProfileModelSerializer
-from accounts.models import User
+from accounts.api.serializers import (
+    DoctorProfileModelSerializer,
+    PatientProfileModelSerializer,
+)
+from accounts.models import DoctorProfile, User
 from appointments.models import Appointment
-from scheduling.models import DoctorSlot
+
+
+class AppointmentReadSerializer(serializers.ModelSerializer):
+    patient = serializers.SerializerMethodField()
+    doctor = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Appointment
+        fields = [
+            "id",
+            "patient",
+            "doctor",
+            "start_time",
+            "end_time",
+            "status",
+            "created_at",
+        ]
+
+    def get_patient(self, obj):
+        patient_user = obj.patient.user
+        return {
+            "id": obj.patient_id,
+            "user_id": patient_user.id,
+            "name": patient_user.get_full_name() or patient_user.username,
+        }
+
+    def get_doctor(self, obj):
+        doctor_user = obj.doctor.user
+        return {
+            "id": obj.doctor_id,
+            "user_id": doctor_user.id,
+            "name": doctor_user.get_full_name() or doctor_user.username,
+        }
 
 
 class AppointmentBookingRequestSerializer(serializers.Serializer):
-    slot_id = serializers.PrimaryKeyRelatedField(
-        queryset=DoctorSlot.objects.all(),
-        source="slot",
+    doctor_id = serializers.PrimaryKeyRelatedField(
+        queryset=DoctorProfile.objects.all(),
+        source="doctor",
     )
+    start_time = serializers.DateTimeField()
     patient_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role="patient"),
         source="patient",
@@ -36,6 +71,7 @@ class AppointmentBookingResponseSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
+
 class AppointmentSerializer(serializers.ModelSerializer):
     waiting_time = serializers.SerializerMethodField()
     doctor = DoctorProfileModelSerializer(read_only=True)
@@ -51,7 +87,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "end_time",
             "check_in_time",
             "status",
-            "waiting_time"
+            "waiting_time",
         ]
 
     def get_waiting_time(self, obj):
@@ -67,19 +103,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         request = self.context.get("request")
         user = request.user if request else None
-
         if not user:
             return data
 
         role = getattr(user, "role", None)
-
         if role == "patient":
             data.pop("patient", None)
-
         elif role == "doctor":
             data.pop("doctor", None)
-
-        elif role == "receptionist":
-            pass
 
         return data

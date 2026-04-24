@@ -14,21 +14,6 @@ class BookingBadRequestError(APIException):
             }
         )
 
-    @classmethod
-    def from_django_validation_error(cls, exc):
-        if hasattr(exc, "message_dict") and exc.message_dict:
-            first_key = next(iter(exc.message_dict))
-            value = exc.message_dict[first_key]
-            if isinstance(value, list) and value:
-                return cls(message=str(value[0]))
-            return cls(message=str(value))
-
-        if hasattr(exc, "messages") and exc.messages:
-            return cls(message=str(exc.messages[0]))
-
-        return cls()
-
-
 class BookingConflictError(BookingBadRequestError):
     status_code = 409
     default_code = "conflict"
@@ -36,6 +21,10 @@ class BookingConflictError(BookingBadRequestError):
 
     def __init__(self, message=None):
         super().__init__(message=message or self.default_message, error="CONFLICT")
+
+
+class AppointmentCancellationError(BookingBadRequestError):
+    default_message = "Appointment could not be cancelled."
 
 
 class SlotUnavailableError(BookingConflictError):

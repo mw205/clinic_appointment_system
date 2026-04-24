@@ -204,4 +204,14 @@ cd ..
 python3 diagnose_setup.py
 ```
 
+---
+## Database seeding
+```bash
+cd ./backend
+python3 manage.py flush ##to delete the database's content
+python3 manage.py setup_roles #setup roles for the project
+python3 manage.py makemigrations
+python3 manage.py migrate
+python3 seed_data.py
+```
 Then start backend and frontend in separate terminals as shown above.
