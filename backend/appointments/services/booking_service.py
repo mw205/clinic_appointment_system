@@ -85,6 +85,9 @@ def cancel_appointment(appointment, cancelled_by):
         )
 
     appointment_start_time = ensure_aware_datetime(appointment.start_time)
+    if timezone.now() >= appointment_start_time:
+        raise AppointmentCancellationError("Past appointments cannot be cancelled.")
+
     cancellation_deadline = appointment_start_time - timedelta(
         hours=cancellation_window_hours
     )
