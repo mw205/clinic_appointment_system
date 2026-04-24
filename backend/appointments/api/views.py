@@ -19,7 +19,7 @@ from appointments.api.serializers import (
 )
 from appointments.exceptions import BookingBadRequestError
 from appointments.models import Appointment
-from appointments.services.booking_service import create_appointment
+from appointments.services.booking_service import cancel_appointment, create_appointment
 from appointments.services.queue_service import get_doctor_queue
 
 
@@ -137,12 +137,16 @@ class AppointmentViewSet(
         if appointment.patient.user_id != request.user.id:
             raise PermissionDenied("You do not have permission")
 
-        if appointment.status == Appointment.Status.COMPLETED:
-            return Response({"error": "Appointment already completed"}, status=400)
+        try:
+            appointment = cancel_appointment(
+                appointment,
+                request.user,
+            )
+        except DjangoValidationError as exc:
+            raise BookingBadRequestError.from_django_validation_error(exc)
 
-        appointment.status = Appointment.Status.CANCELLED
-        appointment.save(update_fields=["status"])
-        return Response({"message": "Appointment cancelled"})
+        serializer = AppointmentReadSerializer(appointment)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def check_in(self, request, pk=None):

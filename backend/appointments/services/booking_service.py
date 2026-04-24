@@ -61,6 +61,18 @@ def create_appointment(patient, doctor, start_time):
             raise DoctorBookedError("Doctor already booked for this slot.") from exc
 
 
+def cancel_appointment(appointment, cancelled_by):
+    if cancelled_by is None:
+        raise ValidationError({"cancelled_by": "A cancelling user is required."})
+
+    if appointment.status == Appointment.Status.COMPLETED:
+        raise ValidationError({"status": "Appointment already completed."})
+
+    appointment.status = Appointment.Status.CANCELLED
+    appointment.save(update_fields=["status"])
+    return appointment
+
+
 def resolve_patient_profile(patient):
     if patient is None:
         raise ValidationError({"patient": "Patient is required."})
