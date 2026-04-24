@@ -1,6 +1,7 @@
 from datetime import date
 
 from rest_framework import serializers
+from django.contrib.auth import authenticate
 
 from accounts.models import DoctorProfile, PatientProfile, User
 
@@ -61,3 +62,50 @@ class DoctorProfileModelSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Specialization cannot be empty.")
         return value
+
+
+
+class UserSummarySerializer(serializers.ModelSerializer):
+    groups = serializers.SerializerMethodField()
+    primary_role = serializers.SerializerMethodField()
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "primary_role",
+            "groups"
+        ]
+
+    def get_groups(self, obj):
+        return list(obj.groups.values_list('name', flat=True))
+    
+    def get_primary_role(self, obj):
+        groups = list(obj.groups.values_list('name', flat=True))
+        return groups[0] if groups else None
+        
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+
+        request = self.context.get('request')
+        user = authenticate(request=request, username=username, password=password)
+
+        if not user:
+            raise serializers.ValidationError(
+                'Invalid username or password.')
+        
+        if not user.is_active:
+            raise serializers.ValidationError(
+                'User account is inactive.')
+        
+        attrs['user'] = user
+        return attrs
