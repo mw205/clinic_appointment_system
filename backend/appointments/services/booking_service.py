@@ -1,33 +1,29 @@
 from datetime import datetime, timedelta
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from accounts.models import DoctorProfile, PatientProfile
 from appointments.exceptions import (
+    AppointmentCancellationError,
+    BookingBadRequestError,
     BufferTimeViolationError,
     DoctorBookedError,
     PatientOverlapError,
     SlotUnavailableError,
 )
 from appointments.models import Appointment
-from scheduling.models import DoctorSlot
+from scheduling.models import DAY_OF_WEEK_CHOICES, DoctorSchedule
 
 
 DEFAULT_BUFFER_TIME_MINUTES = 5
+DEFAULT_CANCELLATION_WINDOW_HOURS = 2
+DAY_NAME_BY_WEEKDAY = {}
 
-
-def create_appointment_from_slot(patient, slot):
-    if slot is None or getattr(slot, "pk", None) is None:
-        raise SlotUnavailableError("A valid slot_id is required.")
-
-    return create_appointment(
-        patient=patient,
-        doctor=slot.doctor,
-        start_time=slot.start_time,
-    )
+for index, choice in enumerate(DAY_OF_WEEK_CHOICES):
+    day_name = choice[0]
+    DAY_NAME_BY_WEEKDAY[index] = day_name
 
 
 def create_appointment(patient, doctor, start_time):
@@ -35,16 +31,17 @@ def create_appointment(patient, doctor, start_time):
     doctor_profile = resolve_doctor_profile(doctor)
     normalized_start_time = normalize_start_time(start_time)
 
-    slot = validate_slot_availability(doctor_profile, normalized_start_time)
-    normalized_end_time = normalize_slot_end_time(slot.end_time)
-    buffer_minutes = resolve_buffer_minutes(slot)
+    schedule = get_bookable_schedule(doctor_profile, normalized_start_time)
+    _, normalized_end_time = get_slot_window(schedule, normalized_start_time)
+    buffer_minutes = resolve_buffer_minutes(schedule)
 
     with transaction.atomic():
-        locked_slot = lock_available_slot(doctor_profile, normalized_start_time)
-        if locked_slot is None:
-            raise SlotUnavailableError("Requested slot is no longer available.")
-
-        normalized_end_time = normalize_slot_end_time(locked_slot.end_time)
+        locked_schedule = get_bookable_schedule(
+            doctor_profile,
+            normalized_start_time,
+            for_update=True,
+        )
+        _, normalized_end_time = get_slot_window(locked_schedule, normalized_start_time)
 
         check_doctor_conflict(doctor_profile, normalized_start_time, normalized_end_time)
         check_patient_overlap(patient_profile, normalized_start_time, normalized_end_time)
@@ -56,112 +53,122 @@ def create_appointment(patient, doctor, start_time):
         )
 
         try:
-            appointment = Appointment.objects.create(
+            return Appointment.objects.create(
                 patient=patient_profile,
                 doctor=doctor_profile,
                 start_time=normalized_start_time,
                 end_time=normalized_end_time,
             )
-            locked_slot.is_available = False
-            locked_slot.appointment = appointment
-            locked_slot.save(update_fields=["is_available", "appointment", "updated_at"])
         except IntegrityError as exc:
             raise DoctorBookedError("Doctor already booked for this slot.") from exc
 
-        return appointment
+
+def cancel_appointment(appointment, cancelled_by):
+    if cancelled_by is None:
+        raise AppointmentCancellationError("A cancelling user is required.")
+
+    if appointment.status == Appointment.Status.COMPLETED:
+        raise AppointmentCancellationError("Completed appointments cannot be cancelled.")
+    if appointment.status == Appointment.Status.CANCELLED:
+        raise AppointmentCancellationError("Appointment is already cancelled.")
+
+    cancellation_window_hours = int(
+        getattr(
+            settings,
+            "CANCELLATION_WINDOW_HOURS",
+            DEFAULT_CANCELLATION_WINDOW_HOURS,
+        )
+    )
+    if cancellation_window_hours < 0:
+        raise AppointmentCancellationError(
+            "Cancellation window hours must be zero or a positive integer."
+        )
+
+    appointment_start_time = ensure_aware_datetime(appointment.start_time)
+    cancellation_deadline = appointment_start_time - timedelta(
+        hours=cancellation_window_hours
+    )
+    if timezone.now() >= cancellation_deadline:
+        raise AppointmentCancellationError(
+            "Appointment cannot be cancelled within "
+            f"{cancellation_window_hours} hours of start time."
+        )
+
+    appointment.status = Appointment.Status.CANCELLED
+    appointment.save(update_fields=["status"])
+    return appointment
 
 
 def resolve_patient_profile(patient):
     if patient is None:
-        raise ValidationError({"patient": "Patient is required."})
+        raise BookingBadRequestError("Patient is required.")
     if isinstance(patient, PatientProfile):
         if getattr(patient, "pk", None) is None:
-            raise ValidationError({"patient": "Patient profile must be saved."})
+            raise BookingBadRequestError("Patient profile must be saved.")
         return patient
 
     if getattr(patient, "pk", None) is None:
-        raise ValidationError({"patient": "Patient must be a saved profile or user."})
+        raise BookingBadRequestError("Patient must be a saved profile or user.")
 
     patient_profile = PatientProfile.objects.filter(user=patient).first()
     if patient_profile is None:
-        raise ValidationError({"patient": "No patient profile found for this user."})
+        raise BookingBadRequestError("No patient profile found for this user.")
     return patient_profile
 
 
 def resolve_doctor_profile(doctor):
     if doctor is None:
-        raise ValidationError({"doctor": "Doctor is required."})
+        raise BookingBadRequestError("Doctor is required.")
     if isinstance(doctor, DoctorProfile):
         if getattr(doctor, "pk", None) is None:
-            raise ValidationError({"doctor": "Doctor profile must be saved."})
+            raise BookingBadRequestError("Doctor profile must be saved.")
         return doctor
 
     if getattr(doctor, "pk", None) is None:
-        raise ValidationError({"doctor": "Doctor must be a saved profile or user."})
+        raise BookingBadRequestError("Doctor must be a saved profile or user.")
 
     doctor_profile = DoctorProfile.objects.filter(user=doctor).first()
     if doctor_profile is None:
-        raise ValidationError({"doctor": "No doctor profile found for this user."})
+        raise BookingBadRequestError("No doctor profile found for this user.")
     return doctor_profile
 
 
 def normalize_start_time(start_time):
     if start_time is None:
-        raise ValidationError({"start_time": "Start time is required."})
+        raise BookingBadRequestError("Start time is required.")
     if not isinstance(start_time, datetime):
-        raise ValidationError({"start_time": "Start time must be a datetime."})
+        raise BookingBadRequestError("Start time must be a datetime.")
 
-    if timezone.is_aware(start_time):
-        now_value = timezone.now()
-    else:
-        now_value = datetime.now()
+    start_time = ensure_aware_datetime(start_time)
+    now_value = timezone.now()
 
     if start_time <= now_value:
-        raise ValidationError({"start_time": "Start time must be in the future."})
+        raise BookingBadRequestError("Start time must be in the future.")
 
-    return start_time
-
-
-def normalize_slot_end_time(end_time):
-    if end_time is None:
-        raise ValidationError({"start_time": "Requested slot has no end time."})
-    if not isinstance(end_time, datetime):
-        raise ValidationError({"start_time": "Slot end time must be a datetime."})
-
-    return end_time
+    return timezone.localtime(start_time)
 
 
-def validate_slot_availability(doctor_profile, start_time):
-    slot = fetch_slot_from_scheduling(doctor_profile, start_time)
-    if slot is None:
+def get_bookable_schedule(doctor_profile, start_time, for_update=False):
+    schedules = DoctorSchedule.objects
+    if for_update:
+        schedules = schedules.select_for_update()
+
+    localized_start_time = localize_datetime(start_time)
+    weekday_name = DAY_NAME_BY_WEEKDAY[localized_start_time.weekday()]
+    appointment_start_time = localized_start_time.time()
+
+    schedule = (
+        schedules.filter(
+            doctor=doctor_profile,
+            day_of_week=weekday_name,
+            start_time__lte=appointment_start_time,
+            end_time__gt=appointment_start_time,
+        ).first()
+    )
+    if schedule is None:
         raise SlotUnavailableError("Requested slot does not exist in scheduling.")
-    if not slot.is_available:
-        raise SlotUnavailableError("Requested slot is not available.")
-    return slot
-
-
-def fetch_slot_from_scheduling(doctor_profile, start_time):
-    return (
-        DoctorSlot.objects.select_related("schedule")
-        .filter(
-            doctor=doctor_profile,
-            start_time=start_time,
-        )
-        .first()
-    )
-
-
-def lock_available_slot(doctor_profile, start_time):
-    return (
-        DoctorSlot.objects.select_for_update()
-        .filter(
-            doctor=doctor_profile,
-            start_time=start_time,
-            is_available=True,
-            appointment__isnull=True,
-        )
-        .first()
-    )
+    get_slot_window(schedule, start_time)
+    return schedule
 
 
 def check_doctor_conflict(doctor_profile, start_time, end_time):
@@ -215,9 +222,9 @@ def has_appointment_overlap(queryset, start_time, end_time):
     )
 
 
-def resolve_buffer_minutes(slot):
-    if slot.schedule.buffer_time_minutes is not None:
-        buffer_minutes = int(slot.schedule.buffer_time_minutes)
+def resolve_buffer_minutes(schedule):
+    if schedule.buffer_time_minutes is not None:
+        buffer_minutes = schedule.buffer_time_minutes
     else:
         buffer_minutes = int(
             getattr(
@@ -228,7 +235,47 @@ def resolve_buffer_minutes(slot):
         )
 
     if buffer_minutes < 0:
-        raise ValidationError(
-            {"start_time": "Buffer time must be zero or a positive integer."}
-        )
+        raise BookingBadRequestError("Buffer time must be zero or a positive integer.")
     return buffer_minutes
+
+
+def get_slot_window(schedule, start_time):
+    localized_start_time = localize_datetime(start_time)
+    duration_minutes = schedule.slot_duration_minutes
+    if duration_minutes <= 0:
+        raise SlotUnavailableError("Schedule slot duration must be a positive integer.")
+
+    end_time = localized_start_time + timedelta(minutes=duration_minutes)
+    schedule_end_time = combine_with_time(localized_start_time, schedule.end_time)
+    if end_time > schedule_end_time:
+        raise SlotUnavailableError("Requested slot extends beyond the doctor's schedule.")
+    schedule_start_time = combine_with_time(localized_start_time, schedule.start_time)
+
+    if localized_start_time < schedule_start_time or localized_start_time >= schedule_end_time:
+        raise SlotUnavailableError("Requested slot does not exist in scheduling.")
+
+    offset_seconds = int((localized_start_time - schedule_start_time).total_seconds())
+    if offset_seconds % (duration_minutes * 60) != 0:
+        raise BookingBadRequestError(
+            "Start time must align with the doctor's slot duration."
+        )
+
+    return localized_start_time, end_time
+
+
+def localize_datetime(value):
+    return timezone.localtime(ensure_aware_datetime(value))
+
+
+def ensure_aware_datetime(value):
+    if timezone.is_naive(value):
+        return timezone.make_aware(value, timezone.get_current_timezone())
+    return value
+
+
+def combine_with_time(start_time, time_value):
+    return datetime.combine(
+        start_time.date(),
+        time_value,
+        tzinfo=start_time.tzinfo,
+    )

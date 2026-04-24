@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'rest_framework',
 
     # Local apps
+    'django_filters',
     'api',
     'appointments.apps.AppointmentsConfig',
     'accounts.apps.AccountsConfig',
@@ -170,3 +171,5 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.User'
+
+CANCELLATION_WINDOW_HOURS = 2
