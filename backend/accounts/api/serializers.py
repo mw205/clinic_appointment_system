@@ -1,6 +1,7 @@
 from datetime import date
 
 from rest_framework import serializers
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.contrib.auth import authenticate
 
 from accounts.models import DoctorProfile, PatientProfile, User
@@ -134,3 +135,19 @@ class CurrentUserSerializer(serializers.ModelSerializer):
     def get_primary_role(self, obj):
         groups = list(obj.groups.values_list('name', flat=True))
         return groups[0] if groups else None
+    
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+    def validate(self, attrs):
+        self.token = attrs.get('refresh')
+        return attrs
+
+    def save(self, **kwargs):
+        try:
+            RefreshToken(self.token).blacklist()
+
+
+        except TokenError:
+            raise serializers.ValidationError('Invalid or expired token.')
