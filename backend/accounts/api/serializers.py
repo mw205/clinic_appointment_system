@@ -109,3 +109,28 @@ class LoginSerializer(serializers.Serializer):
         
         attrs['user'] = user
         return attrs
+    
+
+class CurrentUserSerializer(serializers.ModelSerializer):
+    groups = serializers.SerializerMethodField()
+    primary_role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "primary_role",
+            "groups"
+        ]
+
+    def get_groups(self, obj):
+        return list(obj.groups.values_list('name', flat=True))
+    
+    def get_primary_role(self, obj):
+        groups = list(obj.groups.values_list('name', flat=True))
+        return groups[0] if groups else None
