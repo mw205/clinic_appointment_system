@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -90,14 +89,11 @@ class AppointmentViewSet(
         serializer.is_valid(raise_exception=True)
         patient_user = self.resolve_booking_patient_user(request, serializer.validated_data)
 
-        try:
-            appointment = create_appointment(
-                patient=patient_user,
-                doctor=serializer.validated_data["doctor"],
-                start_time=serializer.validated_data["start_time"],
-            )
-        except DjangoValidationError as exc:
-            raise BookingBadRequestError.from_django_validation_error(exc)
+        appointment = create_appointment(
+            patient=patient_user,
+            doctor=serializer.validated_data["doctor"],
+            start_time=serializer.validated_data["start_time"],
+        )
 
         response_serializer = AppointmentBookingResponseSerializer(appointment)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
@@ -141,14 +137,10 @@ class AppointmentViewSet(
         appointment = self.get_object()
         self.check_object_permissions(request, appointment)
 
-        try:
-            appointment = cancel_appointment(
-                appointment,
-                request.user,
-            )
-        except DjangoValidationError as exc:
-            raise BookingBadRequestError.from_django_validation_error(exc)
-
+        appointment = cancel_appointment(
+            appointment,
+            request.user,
+        )
         serializer = AppointmentReadSerializer(appointment)
         return Response(serializer.data)
 
