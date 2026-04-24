@@ -17,6 +17,7 @@ from scheduling.models import DAY_OF_WEEK_CHOICES, DoctorSchedule
 
 
 DEFAULT_BUFFER_TIME_MINUTES = 5
+DEFAULT_CANCELLATION_WINDOW_HOURS = 2
 DAY_NAME_BY_WEEKDAY = {}
 
 for index, choice in enumerate(DAY_OF_WEEK_CHOICES):
@@ -67,6 +68,34 @@ def cancel_appointment(appointment, cancelled_by):
 
     if appointment.status == Appointment.Status.COMPLETED:
         raise ValidationError({"status": "Appointment already completed."})
+    if appointment.status == Appointment.Status.CANCELLED:
+        raise ValidationError({"status": "Appointment already cancelled."})
+
+    cancellation_window_hours = int(
+        getattr(
+            settings,
+            "CANCELLATION_WINDOW_HOURS",
+            DEFAULT_CANCELLATION_WINDOW_HOURS,
+        )
+    )
+    if cancellation_window_hours < 0:
+        raise ValidationError(
+            {"status": "Cancellation window hours must be zero or a positive integer."}
+        )
+
+    appointment_start_time = ensure_aware_datetime(appointment.start_time)
+    cancellation_deadline = appointment_start_time - timedelta(
+        hours=cancellation_window_hours
+    )
+    if timezone.now() >= cancellation_deadline:
+        raise ValidationError(
+            {
+                "status": (
+                    "Appointments cannot be cancelled within "
+                    f"{cancellation_window_hours} hours of the start time."
+                )
+            }
+        )
 
     appointment.status = Appointment.Status.CANCELLED
     appointment.save(update_fields=["status"])
