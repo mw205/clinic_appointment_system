@@ -1,4 +1,3 @@
-from django.contrib.auth.models import PermissionsMixin
 from rest_framework.permissions import BasePermission
 
 
@@ -31,3 +30,22 @@ class IsReceptionistRole(BasePermission):
             and user.is_authenticated
             and user.groups.filter(name="Receptionist").exists()
         )
+
+
+class CanCancelAppointment(BasePermission):
+    message = "You do not have permission to cancel this appointment."
+
+    def has_object_permission(self, request, view, appointment):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+
+        user_role = user.role.lower()
+
+        if user_role == "admin":
+            return True
+        if user_role == "receptionist":
+            return True
+        if user_role == "patient":
+            return appointment.patient.user_id == user.id
+        return False
