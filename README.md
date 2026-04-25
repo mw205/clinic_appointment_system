@@ -2,7 +2,7 @@
 
 Monorepo for a clinic appointment system with:
 
-- Backend: Django, Django REST Framework, SQLite
+- Backend: Django, Django REST Framework, MySQL
 - Frontend: Vue 3, Vite, pnpm
 
 ## Current Readiness
