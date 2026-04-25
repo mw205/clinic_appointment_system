@@ -56,6 +56,15 @@ class AppointmentBookingRequestSerializer(serializers.Serializer):
     )
 
 
+class AppointmentRescheduleRequestSerializer(serializers.Serializer):
+    new_start_time = serializers.DateTimeField()
+    reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+    )
+
+
 class AppointmentBookingResponseSerializer(serializers.ModelSerializer):
     doctor = serializers.PrimaryKeyRelatedField(read_only=True)
     patient = serializers.PrimaryKeyRelatedField(read_only=True)

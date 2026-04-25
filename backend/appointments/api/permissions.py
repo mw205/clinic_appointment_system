@@ -49,3 +49,21 @@ class CanCancelAppointment(BasePermission):
             return appointment.patient.user_id == user.id
 
         return False
+
+
+class CanRescheduleAppointment(BasePermission):
+    message = "You do not have permission to reschedule this appointment."
+
+    def has_object_permission(self, request, view, appointment):
+        user = request.user
+
+        if not user or not user.is_authenticated:
+            return False
+
+        if is_admin(user) or is_receptionist(user):
+            return True
+
+        if is_patient(user):
+            return appointment.patient.user_id == user.id
+
+        return False

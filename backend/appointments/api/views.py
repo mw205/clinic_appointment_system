@@ -13,6 +13,7 @@ from appointments.api.filters import AppointmentFilter
 from appointments.api.pagination import AppointmentListPagination
 from appointments.api.permissions import (
     CanCancelAppointment,
+    CanRescheduleAppointment,
     IsDoctorRole,
     IsPatientOrReceptionistRole,
 )
@@ -20,12 +21,14 @@ from appointments.api.serializers import (
     AppointmentBookingRequestSerializer,
     AppointmentBookingResponseSerializer,
     AppointmentReadSerializer,
+    AppointmentRescheduleRequestSerializer,
     AppointmentSerializer,
 )
 from appointments.exceptions import BookingBadRequestError
 from appointments.models import Appointment
 from appointments.services.booking_service import cancel_appointment, create_appointment
 from appointments.services.queue_service import get_doctor_queue
+from appointments.services.reschedule_service import reschedule_appointment
 
 from accounts.rbac import ADMIN, RECEPTIONIST, is_receptionist, is_doctor, is_patient, user_has_any_group
 
@@ -69,6 +72,8 @@ class AppointmentViewSet(
             return [IsPatientOrReceptionistRole()]
         if self.action == "cancel":
             return [IsAuthenticated(), CanCancelAppointment()]
+        if self.action == "reschedule":
+            return [IsAuthenticated(), CanRescheduleAppointment()]
         if self.action == "doctor_queue":
             return [IsAuthenticated(), IsDoctorRole()]
         return [IsAuthenticated()]
@@ -76,6 +81,8 @@ class AppointmentViewSet(
     def get_serializer_class(self):
         if self.action == "create":
             return AppointmentBookingRequestSerializer
+        if self.action == "reschedule":
+            return AppointmentRescheduleRequestSerializer
         return AppointmentReadSerializer
 
     def get_queryset(self):
@@ -139,6 +146,22 @@ class AppointmentViewSet(
         )
         serializer = AppointmentReadSerializer(appointment)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def reschedule(self, request, pk=None):
+        appointment = self.get_object()
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        appointment = reschedule_appointment(
+            appointment=appointment,
+            new_start_time=serializer.validated_data["new_start_time"],
+            changed_by=request.user,
+            reason=serializer.validated_data.get("reason", ""),
+        )
+        response_serializer = AppointmentReadSerializer(appointment)
+        return Response(response_serializer.data)
 
     @action(detail=True, methods=['post'])
     def check_in(self, request, pk=None):
