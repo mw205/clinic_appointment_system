@@ -27,7 +27,7 @@ from appointments.api.serializers import (
 from appointments.exceptions import BookingBadRequestError
 from appointments.models import Appointment
 from appointments.services.booking_service import cancel_appointment, create_appointment
-from appointments.services.queue_service import get_doctor_queue
+from appointments.services.doctor_appointments_service import get_doctor_appointments
 from appointments.services.reschedule_service import reschedule_appointment
 
 from accounts.rbac import ADMIN, RECEPTIONIST, is_receptionist, is_doctor, is_patient, user_has_any_group
@@ -176,12 +176,12 @@ class AppointmentViewSet(
         appointment.save()
         return Response({"message": "Appointment checked in"}, HTTP_200_OK)
 
-    @action(detail=False, methods=['get'], url_path='doctor/queue', url_name='doctor-queue')
-    def doctor_queue(self, request):
+    @action(detail=False, methods=['get'], url_path='doctor/appointments', url_name='doctor-appointments')
+    def doctor_appointments(self, request):
         doctor = request.user
-        date = request.GET.get('date')
-        queue = get_doctor_queue(doctor.id, date)
-        queue_serializer = AppointmentSerializer(queue, many=True, context={"request": request})
+        queryset = get_doctor_appointments(doctor.id)
+        queryset = self.filter_queryset(queryset)
+        queue_serializer = AppointmentSerializer(queryset, many=True, context={"request": request})
         return Response(
             queue_serializer.data,
             status=HTTP_200_OK
