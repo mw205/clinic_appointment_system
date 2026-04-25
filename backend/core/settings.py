@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'api',
     'appointments.apps.AppointmentsConfig',
     'accounts.apps.AccountsConfig',
+    'consultations.apps.ConsultationsConfig',
     'scheduling.apps.SchedulingConfig'
 ]
 
