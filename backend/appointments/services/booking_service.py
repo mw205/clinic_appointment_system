@@ -84,7 +84,7 @@ def cancel_appointment(appointment, cancelled_by):
             "Cancellation window hours must be zero or a positive integer."
         )
 
-    appointment_start_time = ensure_aware_datetime(appointment.start_time)
+    appointment_start_time = localize_datetime(appointment.start_time)
     if timezone.now() >= appointment_start_time:
         raise AppointmentCancellationError("Past appointments cannot be cancelled.")
 
@@ -142,13 +142,13 @@ def normalize_start_time(start_time):
     if not isinstance(start_time, datetime):
         raise BookingBadRequestError("Start time must be a datetime.")
 
-    start_time = ensure_aware_datetime(start_time)
+    start_time = localize_datetime(start_time)
     now_value = timezone.now()
 
     if start_time <= now_value:
         raise BookingBadRequestError("Start time must be in the future.")
 
-    return timezone.localtime(start_time)
+    return start_time
 
 
 def get_bookable_schedule(doctor_profile, start_time, for_update=False):
@@ -174,39 +174,67 @@ def get_bookable_schedule(doctor_profile, start_time, for_update=False):
     return schedule
 
 
-def check_doctor_conflict(doctor_profile, start_time, end_time):
+def check_doctor_conflict(
+    doctor_profile,
+    start_time,
+    end_time,
+    excluded_appointment=None,
+):
+    appointments = Appointment.objects.filter(doctor=doctor_profile)
+    if excluded_appointment is not None:
+        appointments = appointments.exclude(pk=excluded_appointment.pk)
+
     if has_appointment_overlap(
-        Appointment.objects.filter(doctor=doctor_profile),
+        appointments,
         start_time,
         end_time,
     ):
         raise DoctorBookedError("Doctor already booked for this slot.")
 
 
-def check_patient_overlap(patient_profile, start_time, end_time):
+def check_patient_overlap(
+    patient_profile,
+    start_time,
+    end_time,
+    excluded_appointment=None,
+):
+    appointments = Appointment.objects.filter(patient=patient_profile)
+    if excluded_appointment is not None:
+        appointments = appointments.exclude(pk=excluded_appointment.pk)
+
     if has_appointment_overlap(
-        Appointment.objects.filter(patient=patient_profile),
+        appointments,
         start_time,
         end_time,
     ):
         raise PatientOverlapError("Patient already has an overlapping appointment.")
 
 
-def apply_buffer_time_rules(doctor_profile, start_time, end_time, buffer_minutes):
+def apply_buffer_time_rules(
+    doctor_profile,
+    start_time,
+    end_time,
+    buffer_minutes,
+    excluded_appointment=None,
+):
     if buffer_minutes <= 0:
         return
 
     window_start = start_time - timedelta(minutes=buffer_minutes)
     window_end = end_time + timedelta(minutes=buffer_minutes)
+    appointments = Appointment.objects.filter(doctor=doctor_profile)
+    if excluded_appointment is not None:
+        appointments = appointments.exclude(pk=excluded_appointment.pk)
 
     if has_appointment_overlap(
-        Appointment.objects.filter(doctor=doctor_profile),
+        appointments,
         window_start,
         window_end,
     ):
         raise BufferTimeViolationError(
             f"Doctor buffer time of {buffer_minutes} minutes is not respected."
         )
+
 
 def has_appointment_overlap(queryset, start_time, end_time):
     blocking_statuses = [
@@ -242,13 +270,19 @@ def resolve_buffer_minutes(schedule):
     return buffer_minutes
 
 
-def get_slot_window(schedule, start_time):
+def get_slot_window(schedule, start_time, duration=None):
     localized_start_time = localize_datetime(start_time)
-    duration_minutes = schedule.slot_duration_minutes
-    if duration_minutes <= 0:
+    slot_duration_minutes = schedule.slot_duration_minutes
+    if slot_duration_minutes <= 0:
         raise SlotUnavailableError("Schedule slot duration must be a positive integer.")
 
-    end_time = localized_start_time + timedelta(minutes=duration_minutes)
+    buffer_minutes = resolve_buffer_minutes(schedule)
+    slot_step_minutes = slot_duration_minutes + buffer_minutes
+    appointment_duration = duration or timedelta(minutes=slot_duration_minutes)
+    if appointment_duration.total_seconds() <= 0:
+        raise SlotUnavailableError("Appointment duration must be positive.")
+
+    end_time = localized_start_time + appointment_duration
     schedule_end_time = combine_with_time(localized_start_time, schedule.end_time)
     if end_time > schedule_end_time:
         raise SlotUnavailableError("Requested slot extends beyond the doctor's schedule.")
@@ -258,22 +292,18 @@ def get_slot_window(schedule, start_time):
         raise SlotUnavailableError("Requested slot does not exist in scheduling.")
 
     offset_seconds = int((localized_start_time - schedule_start_time).total_seconds())
-    if offset_seconds % (duration_minutes * 60) != 0:
+    if offset_seconds % (slot_step_minutes * 60) != 0:
         raise BookingBadRequestError(
-            "Start time must align with the doctor's slot duration."
+            "Start time must align with the doctor's slot duration and buffer time."
         )
 
     return localized_start_time, end_time
 
 
 def localize_datetime(value):
-    return timezone.localtime(ensure_aware_datetime(value))
-
-
-def ensure_aware_datetime(value):
     if timezone.is_naive(value):
-        return timezone.make_aware(value, timezone.get_current_timezone())
-    return value
+        value = timezone.make_aware(value, timezone.get_current_timezone())
+    return timezone.localtime(value)
 
 
 def combine_with_time(start_time, time_value):
