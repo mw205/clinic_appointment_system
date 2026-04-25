@@ -27,6 +27,9 @@ from appointments.models import Appointment
 from appointments.services.booking_service import cancel_appointment, create_appointment
 from appointments.services.queue_service import get_doctor_queue
 
+from accounts.rbac import ADMIN, RECEPTIONIST, is_receptionist, is_doctor, is_patient, user_has_any_group
+
+
 
 def get_role_filtered_appointments_queryset(user):
     queryset = Appointment.objects.select_related(
@@ -34,22 +37,16 @@ def get_role_filtered_appointments_queryset(user):
         "doctor__user",
     )
 
-    group_names = {
-        name.strip().lower()
-        for name in user.groups.values_list("name", flat=True)
-    }
-    user_role = (getattr(user, "role", "") or "").lower()
-    user_roles = set(group_names)
-    if user_role:
-        user_roles.add(user_role)
+    if not user or not user.is_authenticated:
+        return queryset.none()
 
-    if user.is_staff or "admin" in user_roles:
+    if user_has_any_group(user, [ADMIN, RECEPTIONIST]):
         return queryset
-    if "receptionist" in user_roles:
-        return queryset
-    if "doctor" in user_roles:
+
+    if is_doctor(user):
         return queryset.filter(doctor__user=user)
-    if "patient" in user_roles:
+
+    if is_patient(user):
         return queryset.filter(patient__user=user)
     return queryset.none()
 
@@ -100,15 +97,14 @@ class AppointmentViewSet(
 
     def resolve_booking_patient_user(self, request, validated_data):
         requester = request.user
-        requester_role = getattr(requester, "role", None)
 
-        if requester_role == "patient":
+        if is_patient(requester):
             requested_patient = validated_data.get("patient")
             if requested_patient is not None and requested_patient.id != requester.id:
                 raise PermissionDenied("Patients can only book appointments for themselves.")
             return requester
 
-        if requester_role == "receptionist":
+        if is_receptionist(requester):
             requested_patient = validated_data.get("patient")
             if requested_patient is None:
                 raise BookingBadRequestError("patient_id is required for receptionists.")

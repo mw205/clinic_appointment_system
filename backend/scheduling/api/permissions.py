@@ -1,14 +1,13 @@
-from django.contrib.auth.base_user import AbstractBaseUser
 from rest_framework.permissions import BasePermission
+
+from accounts.rbac import user_has_any_group, DOCTOR, RECEPTIONIST
 
 
 class IsDoctorOrReceptionist(BasePermission):
-    message = "Only Doctor or Receptionist can access can view schedules"
+    message = "Only Doctor or Receptionist can access or view schedules."
 
     def has_permission(self, request, view):
-        user = request.user
-        return bool(
-            user and
-            user.is_authenticated and
-            getattr(user, "role", None) in {"doctor", "receptionist"}
+        return user_has_any_group(
+            request.user,
+            [DOCTOR, RECEPTIONIST]
         )

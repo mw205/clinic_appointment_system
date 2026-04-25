@@ -1,21 +1,30 @@
 import os
-import random
-from datetime import date, datetime, time, timedelta
-
 import django
-from django.db import transaction
-from django.utils import timezone
-from faker import Faker
 
 # Setup Django Environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 django.setup()
+
+import random
+from datetime import date, datetime, time, timedelta
+
+from django.contrib.auth.models import Group
+from django.db import transaction
+from django.utils import timezone
+from faker import Faker
 
 from accounts.models import DoctorProfile, PatientProfile, User
 from appointments.models import Appointment, RescheduleHistory
 from scheduling.models import DoctorSchedule, ScheduleException
 
 fake = Faker()
+
+ROLE_TO_GROUP = {
+    "admin": "Admin",
+    "receptionist": "Receptionist",
+    "doctor": "Doctor",
+    "patient": "Patient",
+}
 
 def clean_db():
     print("🧹 Cleaning database...")
@@ -25,6 +34,12 @@ def clean_db():
 
 def create_users(role, count):
     users = []
+    group_name = ROLE_TO_GROUP[role]
+    group = Group.objects.filter(name=group_name).first()
+
+    if group is None:
+        raise RuntimeError(f"Required group '{group_name}' does not exist. Run role setup first.")
+
     for _ in range(count):
         first_name = fake.first_name()
         last_name = fake.last_name()
@@ -39,6 +54,7 @@ def create_users(role, count):
             email=fake.email(),
             phone_number=fake.phone_number()[:15]
         )
+        user.groups.add(group)
         users.append(user)
     return users
 
@@ -152,8 +168,8 @@ def seed_data():
 🚀 Seeding Complete!
 -------------------------------
 Database Status:
-- Admins: {User.objects.filter(role='admin').count()}
-- Receptionists: {User.objects.filter(role='receptionist').count()}
+- Admins: {User.objects.filter(groups__name='Admin').distinct().count()}
+- Receptionists: {User.objects.filter(groups__name='Receptionist').distinct().count()}
 - Doctors: {doctors.__len__()}
 - Patients: {patients.__len__()}
 - Appointments: {Appointment.objects.count()}
