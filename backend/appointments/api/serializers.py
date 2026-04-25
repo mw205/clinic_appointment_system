@@ -7,6 +7,7 @@ from accounts.api.serializers import (
 )
 from accounts.models import DoctorProfile, User
 from appointments.models import Appointment
+from accounts.rbac import PATIENT, is_doctor, is_patient
 
 
 class AppointmentReadSerializer(serializers.ModelSerializer):
@@ -49,9 +50,9 @@ class AppointmentBookingRequestSerializer(serializers.Serializer):
     )
     start_time = serializers.DateTimeField()
     patient_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role="patient"),
-        source="patient",
-        required=False,
+    queryset=User.objects.filter(groups__name=PATIENT),
+    source="patient",
+    required=False,
     )
 
 
@@ -103,13 +104,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         request = self.context.get("request")
         user = request.user if request else None
-        if not user:
+
+        if not user or not user.is_authenticated:
             return data
 
-        role = getattr(user, "role", None)
-        if role == "patient":
+        if is_patient(user):
             data.pop("patient", None)
-        elif role == "doctor":
+        elif is_doctor(user):
             data.pop("doctor", None)
 
         return data
