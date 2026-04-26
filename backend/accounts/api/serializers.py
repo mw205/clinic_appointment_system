@@ -292,3 +292,71 @@ class PatientRegistrationSerializer(serializers.Serializer):
             PatientProfile.objects.create(user=user, **profile_data)
 
         return user
+
+
+class CurrentUserUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False)
+    phone_number = serializers.CharField(required=False)
+
+    def validate_first_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("This field cannot be empty.")
+        return value.strip()
+
+    def validate_last_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("This field cannot be empty.")
+        return value.strip()
+    
+
+    def validate_email(self,value):
+        value = value.strip().lower()
+
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        if User.objects.filter(email=value).exclude(id=user.id).exists():
+            raise serializers.ValidationError("Email is already registered.")
+        return value
+    
+    
+    def validate_phone_number(self, value):
+        value = value.strip()
+
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        # check format
+        if not re.fullmatch(r'^\+?\d+$', value):
+            raise serializers.ValidationError(
+                "Phone number must contain only digits and optional leading '+'."
+            )
+
+        
+        digits_only = value.lstrip('+')
+
+        # validate digit length only
+        if len(digits_only) < 10 or len(digits_only) > 15:
+            raise serializers.ValidationError(
+                "Phone number must be between 10 and 15 digits."
+            )
+        
+        normalized_phone = '+' + digits_only if value.startswith('+') else digits_only
+
+        if User.objects.filter(phone_number=normalized_phone).exclude(id=user.id).exists():
+            raise serializers.ValidationError("Phone number is already registered.")
+        
+        return normalized_phone
+
+    def update(self, instance, validated_data):
+
+        if not validated_data:
+            raise serializers.ValidationError("No data provided for update.")
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save(update_fields=list(validated_data.keys()))
+        return instance

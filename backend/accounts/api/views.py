@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer
+from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer
 
 
 class LoginView(APIView):
@@ -42,6 +42,14 @@ class CurrentUserView(APIView):
         user = request.user
         serializer = CurrentUserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def patch(self, request):
+        user = request.user
+        serializer = CurrentUserUpdateSerializer(instance=user, data=request.data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        return Response(CurrentUserSerializer(user).data, status=status.HTTP_200_OK)
     
 
 class LogoutView(APIView):
