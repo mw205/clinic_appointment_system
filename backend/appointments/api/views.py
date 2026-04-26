@@ -179,7 +179,7 @@ class AppointmentViewSet(
     @action(detail=False, methods=['get'], url_path='doctor/appointments', url_name='doctor-appointments')
     def doctor_appointments(self, request):
         doctor = request.user
-        queryset = get_doctor_appointments(doctor.id)
+        queryset = get_doctor_appointments(doctor.doctorprofile.id)
         queryset = self.filter_queryset(queryset)
         queue_serializer = AppointmentSerializer(queryset, many=True, context={"request": request})
         return Response(
