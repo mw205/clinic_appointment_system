@@ -178,11 +178,19 @@ class AppointmentViewSet(
 
     @action(detail=False, methods=['get'], url_path='doctor/appointments', url_name='doctor-appointments')
     def doctor_appointments(self, request):
-        doctor = request.user
-        queryset = get_doctor_appointments(doctor.doctorprofile.id)
+        user = request.user
+
+        if not is_doctor(user):
+            raise PermissionDenied("Only doctors can access this endpoint.")
+
+        try:
+            doctor_profile = user.doctorprofile
+        except:
+            raise PermissionDenied("Doctor profile not found.")
+
+        queryset = get_doctor_appointments(doctor_profile.id)
         queryset = self.filter_queryset(queryset)
-        queue_serializer = AppointmentSerializer(queryset, many=True, context={"request": request})
-        return Response(
-            queue_serializer.data,
-            status=HTTP_200_OK
-        )
+
+        serializer = AppointmentSerializer(queryset, many=True, context={"request": request})
+
+        return Response(serializer.data, status=HTTP_200_OK)
