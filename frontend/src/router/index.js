@@ -19,7 +19,19 @@ const router = createRouter({
       name: 'ReceptionistScheduleDashboard',
       component: () => import('@/views/receptionist/ReceptionistScheduleDashboard.vue'),
     },
-  ],
+    {
+      path: '/patient/consultations/:id/summary',
+      name: 'ConsultationSummary',
+      component: () => import('@/views/patient/ConsultationSummaryView.vue'),
+      meta: { requiresAuth: true, role: 'patient' }
+    },
+    {
+      path: '/admin/dashboard',
+      name: 'AdminDashboard',
+      component: () => import('@views/admin/AdminDashBoard.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    }
+  ]
 })
 
 export default router
