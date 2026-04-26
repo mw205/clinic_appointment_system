@@ -15,7 +15,7 @@ const router = createRouter({
       component: () => import('@/views/doctor/DoctorScheduleDashboard.vue'),
     },
     {
-      path: 'receptionist/schedules',
+      path: '/receptionist/schedules',
       name: 'ReceptionistScheduleDashboard',
       component: () => import('@/views/receptionist/ReceptionistScheduleDashboard.vue'),
     },
@@ -28,7 +28,7 @@ const router = createRouter({
     {
       path: '/admin/dashboard',
       name: 'AdminDashboard',
-      component: () => import('@views/admin/AdminDashBoard.vue'),
+      component: () => import('@/views/admin/AdminDashboardView.vue'),
       meta: { requiresAuth: true, role: 'admin' }
     }
   ]
