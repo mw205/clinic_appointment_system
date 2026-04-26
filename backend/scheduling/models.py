@@ -4,7 +4,6 @@ from django.db import models
 
 from accounts.models import DoctorProfile
 
-
 DAY_OF_WEEK_CHOICES = [
     ("monday", "Monday"),
     ("tuesday", "Tuesday"),
@@ -43,7 +42,10 @@ class DoctorSchedule(models.Model):
         ).exclude(pk=self.pk)
 
         for existing in overlapping_schedules:
-            if self.start_time < existing.end_time and self.end_time > existing.start_time:
+            if (
+                self.start_time < existing.end_time
+                and self.end_time > existing.start_time
+            ):
                 raise ValidationError(
                     f"This schedule overlaps with an existing shift: "
                     f"{existing.start_time} - {existing.end_time}"
@@ -53,6 +55,9 @@ class DoctorSchedule(models.Model):
         indexes = [
             models.Index(fields=["doctor", "day_of_week"]),
         ]
+
+    def __str__(self):
+        return f"{self.doctor.user.first_name} {self.doctor.user.last_name} - {self.day_of_week} - ({self.start_time}-{self.end_time})"
 
 
 class ScheduleException(models.Model):
@@ -91,3 +96,6 @@ class ScheduleException(models.Model):
                 name="unique_doctor_exception_date",
             )
         ]
+
+    def __str__(self):
+        return f"{self.doctor.user.first_name} {self.doctor.user.last_name} - {self.exception_date} - ({self.exception_type})"
