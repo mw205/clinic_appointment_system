@@ -15,7 +15,7 @@ const router = createRouter({
       component: () => import('@/views/doctor/DoctorScheduleDashboard.vue'),
     },
     {
-      path: 'receptionist/schedules',
+      path: '/receptionist/schedules',
       name: 'ReceptionistScheduleDashboard',
       component: () => import('@/views/receptionist/ReceptionistScheduleDashboard.vue'),
     },
@@ -23,15 +23,15 @@ const router = createRouter({
       path: '/patient/consultations/:id/summary',
       name: 'ConsultationSummary',
       component: () => import('@/views/patient/ConsultationSummaryView.vue'),
-      meta: { requiresAuth: true, role: 'patient' }
+      meta: { requiresAuth: true, role: 'patient' },
     },
     {
       path: '/admin/dashboard',
       name: 'AdminDashboard',
-      component: () => import('@views/admin/AdminDashBoard.vue'),
-      meta: { requiresAuth: true, role: 'admin' }
-    }
-  ]
+      component: () => import('@/views/admin/AdminDashboardView.vue'),
+      meta: { requiresAuth: true, role: 'admin' },
+    },
+  ],
 })
 
 export default router
