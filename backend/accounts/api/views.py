@@ -1,13 +1,35 @@
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.exceptions import PermissionDenied, NotFound
 
 from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer
 from accounts.rbac import is_patient
 from accounts.models import PatientProfile
+
+
+def set_refresh_cookie(response, refresh_token):
+    response.set_cookie(
+        settings.AUTH_REFRESH_COOKIE_NAME,
+        refresh_token,
+        max_age=settings.AUTH_REFRESH_COOKIE_MAX_AGE,
+        httponly=settings.AUTH_REFRESH_COOKIE_HTTP_ONLY,
+        secure=settings.AUTH_REFRESH_COOKIE_SECURE,
+        samesite=settings.AUTH_REFRESH_COOKIE_SAMESITE,
+        path=settings.AUTH_REFRESH_COOKIE_PATH,
+    )
+
+
+def delete_refresh_cookie(response):
+    response.delete_cookie(
+        settings.AUTH_REFRESH_COOKIE_NAME,
+        path=settings.AUTH_REFRESH_COOKIE_PATH,
+        samesite=settings.AUTH_REFRESH_COOKIE_SAMESITE,
+    )
 
 
 class LoginView(APIView):
@@ -27,13 +49,14 @@ class LoginView(APIView):
         # serialize user
         user_data = UserSummarySerializer(user).data
 
-        return Response({
+        response = Response({
             'access': access_token,
-            'refresh': refresh_token,
             'user': user_data
         },
         status=status.HTTP_200_OK
         )
+        set_refresh_cookie(response, refresh_token)
+        return response
 
 
 class CurrentUserView(APIView):
@@ -58,15 +81,24 @@ class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = LogoutSerializer(data=request.data)
+        refresh_token = request.COOKIES.get(settings.AUTH_REFRESH_COOKIE_NAME)
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh token cookie is missing."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        serializer = LogoutSerializer(data={"refresh": refresh_token})
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return Response({
+        response = Response({
             "detail": "Successfully logged out."
         },
         status=status.HTTP_200_OK
         )
+        delete_refresh_cookie(response)
+        return response
        
 
 class PatientRegistrationView(APIView):
@@ -85,13 +117,40 @@ class PatientRegistrationView(APIView):
 
         user_data = UserSummarySerializer(user).data
 
-        return Response({
+        response = Response({
             'access': access_token,
-            'refresh': refresh_token,
             'user': user_data
         },
         status=status.HTTP_201_CREATED
         )
+        set_refresh_cookie(response, refresh_token)
+        return response
+
+
+class RefreshTokenCookieView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get(settings.AUTH_REFRESH_COOKIE_NAME)
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh token cookie is missing."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
+        serializer.is_valid(raise_exception=True)
+
+        response_data = {
+            "access": serializer.validated_data["access"],
+        }
+        response = Response(response_data, status=status.HTTP_200_OK)
+
+        rotated_refresh_token = serializer.validated_data.get("refresh")
+        if rotated_refresh_token:
+            set_refresh_cookie(response, rotated_refresh_token)
+
+        return response
     
 
 class CurrentPatientProfileView(APIView):
