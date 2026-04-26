@@ -42,6 +42,7 @@ def create_appointment(patient, doctor, start_time):
             for_update=True,
         )
         _, normalized_end_time = get_slot_window(locked_schedule, normalized_start_time)
+        buffer_minutes = resolve_buffer_minutes(locked_schedule)
 
         check_doctor_conflict(doctor_profile, normalized_start_time, normalized_end_time)
         check_patient_overlap(patient_profile, normalized_start_time, normalized_end_time)
@@ -66,39 +67,44 @@ def create_appointment(patient, doctor, start_time):
 def cancel_appointment(appointment, cancelled_by):
     if cancelled_by is None:
         raise AppointmentCancellationError("A cancelling user is required.")
+    if appointment is None or getattr(appointment, "pk", None) is None:
+        raise AppointmentCancellationError("A saved appointment is required.")
 
-    if appointment.status == Appointment.Status.COMPLETED:
-        raise AppointmentCancellationError("Completed appointments cannot be cancelled.")
-    if appointment.status == Appointment.Status.CANCELLED:
-        raise AppointmentCancellationError("Appointment is already cancelled.")
+    with transaction.atomic():
+        appointment = Appointment.objects.select_for_update().get(pk=appointment.pk)
 
-    cancellation_window_hours = int(
-        getattr(
-            settings,
-            "CANCELLATION_WINDOW_HOURS",
-            DEFAULT_CANCELLATION_WINDOW_HOURS,
+        if appointment.status == Appointment.Status.COMPLETED:
+            raise AppointmentCancellationError("Completed appointments cannot be cancelled.")
+        if appointment.status == Appointment.Status.CANCELLED:
+            raise AppointmentCancellationError("Appointment is already cancelled.")
+
+        cancellation_window_hours = int(
+            getattr(
+                settings,
+                "CANCELLATION_WINDOW_HOURS",
+                DEFAULT_CANCELLATION_WINDOW_HOURS,
+            )
         )
-    )
-    if cancellation_window_hours < 0:
-        raise AppointmentCancellationError(
-            "Cancellation window hours must be zero or a positive integer."
+        if cancellation_window_hours < 0:
+            raise AppointmentCancellationError(
+                "Cancellation window hours must be zero or a positive integer."
+            )
+
+        appointment_start_time = localize_datetime(appointment.start_time)
+        if timezone.now() >= appointment_start_time:
+            raise AppointmentCancellationError("Past appointments cannot be cancelled.")
+
+        cancellation_deadline = appointment_start_time - timedelta(
+            hours=cancellation_window_hours
         )
+        if timezone.now() >= cancellation_deadline:
+            raise AppointmentCancellationError(
+                "Appointment cannot be cancelled within "
+                f"{cancellation_window_hours} hours of start time."
+            )
 
-    appointment_start_time = localize_datetime(appointment.start_time)
-    if timezone.now() >= appointment_start_time:
-        raise AppointmentCancellationError("Past appointments cannot be cancelled.")
-
-    cancellation_deadline = appointment_start_time - timedelta(
-        hours=cancellation_window_hours
-    )
-    if timezone.now() >= cancellation_deadline:
-        raise AppointmentCancellationError(
-            "Appointment cannot be cancelled within "
-            f"{cancellation_window_hours} hours of start time."
-        )
-
-    appointment.status = Appointment.Status.CANCELLED
-    appointment.save(update_fields=["status"])
+        appointment.status = Appointment.Status.CANCELLED
+        appointment.save(update_fields=["status"])
     return appointment
 
 
