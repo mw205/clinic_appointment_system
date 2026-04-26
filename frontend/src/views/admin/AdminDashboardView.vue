@@ -2,7 +2,6 @@
 import ExportCSVButton from '@/components/analytics/ExportCSVButton.vue';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,7 +28,6 @@ function statusVariant(status) {
 
 <template>
   <div class="p-6 flex flex-col gap-6">
-    <h1 class="text-2xl font-bold">Admin Dashboard</h1>
 
     <div v-if="store.loading" class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <Skeleton v-for="n in 4" :key="n" class="h-28 rounded-xl" />
@@ -42,7 +40,7 @@ function statusVariant(status) {
       <StatsCard title="Completed" :value="store.summary.by_status?.completed ?? 0" description="Fully completed" />
     </div>
 
-    <Separator />
+
 
     <Tabs default-value="appointments">
       <TabsList>
