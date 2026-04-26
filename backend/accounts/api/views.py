@@ -2,10 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import PermissionDenied, NotFound
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer
+from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer
+from accounts.rbac import is_patient
+from accounts.models import PatientProfile
 
 
 class LoginView(APIView):
@@ -90,3 +92,33 @@ class PatientRegistrationView(APIView):
         },
         status=status.HTTP_201_CREATED
         )
+    
+
+class CurrentPatientProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request):
+        user = request.user
+        if not is_patient(user):
+            raise PermissionDenied("Only patients can access this resource.")
+        
+        try:
+            return user.patientprofile
+        except PatientProfile.DoesNotExist:
+            raise NotFound("Patient profile not found.")
+        
+    def get(self, request):
+        profile = self.get_object(request)
+
+        serializer = CurrentPatientProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    def patch(self, request):
+        profile = self.get_object(request)
+
+        serializer = CurrentPatientProfileUpdateSerializer(instance=profile, data=request.data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save()
+
+        return Response(CurrentPatientProfileSerializer(profile).data, status=status.HTTP_200_OK)

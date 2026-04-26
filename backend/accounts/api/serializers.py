@@ -172,7 +172,11 @@ class PatientRegistrationSerializer(serializers.Serializer):
 
     # PatientProfile fields
     date_of_birth = serializers.DateField()
-    blood_type = serializers.CharField()
+    blood_type = serializers.ChoiceField(
+    choices=[
+        "A+", "A-", "B+", "B-",
+        "AB+", "AB-", "O+", "O-"
+    ])
     gender = serializers.ChoiceField(choices=[
     ("male", "Male"),
     ("female", "Female"),
@@ -207,10 +211,6 @@ class PatientRegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError("Date of birth cannot be in the future.")
         return value
     
-    def validate_blood_type(self, value):
-        if value not in ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]:
-            raise serializers.ValidationError("Invalid blood type.")
-        return value
     
     def validate_phone_number(self, value):
         value = value.strip()
@@ -358,5 +358,51 @@ class CurrentUserUpdateSerializer(serializers.Serializer):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
+        instance.save(update_fields=list(validated_data.keys()))
+        return instance
+    
+
+class CurrentPatientProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatientProfile
+        fields = [
+            "date_of_birth",
+            "blood_type",
+            "gender",   
+            ]
+
+
+class CurrentPatientProfileUpdateSerializer(serializers.Serializer):
+    date_of_birth = serializers.DateField(required=False)
+    blood_type = serializers.ChoiceField(
+    choices=[
+        "A+", "A-", "B+", "B-",
+        "AB+", "AB-", "O+", "O-"
+    ],
+    required=False
+)
+    gender = serializers.ChoiceField(
+        choices=[
+            ("male", "Male"),
+            ("female", "Female"),
+        ],
+        required=False,
+    )
+
+    def validate_date_of_birth(self, value):
+        
+        if value > date.today():
+            raise serializers.ValidationError("Date of birth cannot be in the future.")
+
+        return value
+
+    def update(self, instance, validated_data):
+        
+        if not validated_data:
+            raise serializers.ValidationError("No data provided for update.")
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
         instance.save(update_fields=list(validated_data.keys()))
         return instance
