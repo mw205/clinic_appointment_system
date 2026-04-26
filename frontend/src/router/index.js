@@ -9,6 +9,12 @@ const router = createRouter({
       component: () => import('@/views/doctor/ConsultationFormView.vue'),
       meta: { requiresAuth: true, role: 'doctor' }
     },
+    {
+      path: '/admin/dashboard',
+      name: 'AdminDashboard',
+      component: () => import('@views/admin/AdminDashBoard.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    }
   ]
 })
 
