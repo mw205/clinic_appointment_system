@@ -10,6 +10,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'doctor' }
     },
     {
+      path: '/patient/consultations/:id/summary',
+      name: 'ConsultationSummary',
+      component: () => import('@/views/patient/ConsultationSummaryView.vue'),
+      meta: { requiresAuth: true, role: 'patient' }
+    },
+    {
       path: '/admin/dashboard',
       name: 'AdminDashboard',
       component: () => import('@views/admin/AdminDashBoard.vue'),
