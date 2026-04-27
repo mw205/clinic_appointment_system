@@ -5,6 +5,18 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/auth/LoginView.vue'),
+      meta: { requiresAuth: false, guestOnly: true },
+    },
+    {
+      path: '/signup',
+      name: 'Signup',
+      component: () => import('@/views/auth/SignupView.vue'),
+      meta: { requiresAuth: false, guestOnly: true },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/DashboardLayout.vue'),
       meta: { requiresAuth: true },
@@ -47,14 +59,31 @@ const router = createRouter({
           name: 'home-redirect',
           redirect: () => {
             const { user } = useAuth()
-            console.log(user)
-
-            return getDefaultRouteForRole(user.value.userObject.primary_role)
+            if (!user.value) {
+              return '/login'
+            }
+            return getDefaultRouteForRole(user.value.primary_role)
           },
         },
       ],
     },
   ],
+})
+
+router.beforeEach(async (to, from) => {
+  const { user, authReady, checkSession } = useAuth()
+  
+  if (!authReady.value) {
+    await checkSession()
+  }
+
+  const isAuthenticated = !!user.value
+
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    return '/login'
+  } else if (to.meta.guestOnly && isAuthenticated) {
+    return '/'
+  }
 })
 
 export default router

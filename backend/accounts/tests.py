@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AnonymousUser, Group
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -100,8 +101,9 @@ class AccountsAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("access", response.data)
-        self.assertIn("refresh", response.data)
+        self.assertNotIn("refresh", response.data)
         self.assertEqual(response.data["user"]["primary_role"], PATIENT)
+        self.assertIn(settings.AUTH_REFRESH_COOKIE_NAME, response.cookies)
         created_user = User.objects.get(username="new_patient")
         self.assertTrue(created_user.groups.filter(name=PATIENT).exists())
         self.assertTrue(PatientProfile.objects.filter(user=created_user).exists())
@@ -124,7 +126,7 @@ class AccountsAPITests(APITestCase):
         response = self.client.post(self.register_url, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("email", response.data)
+        self.assertIn("email", response.data["details"])
 
     def test_login_returns_tokens_and_group_based_user_summary(self):
         self.create_patient_user(username="login_patient", email="login@example.com")
@@ -137,9 +139,10 @@ class AccountsAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
-        self.assertIn("refresh", response.data)
+        self.assertNotIn("refresh", response.data)
         self.assertEqual(response.data["user"]["primary_role"], PATIENT)
         self.assertEqual(response.data["user"]["groups"], [PATIENT])
+        self.assertIn(settings.AUTH_REFRESH_COOKIE_NAME, response.cookies)
 
     def test_me_requires_authentication(self):
         response = self.client.get(self.me_url)
@@ -161,31 +164,31 @@ class AccountsAPITests(APITestCase):
     def test_refresh_returns_new_access_token(self):
         user = self.create_patient_user(username="refresh_patient", email="refresh@example.com")
         refresh = RefreshToken.for_user(user)
+        self.client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = str(refresh)
 
         response = self.client.post(
             self.refresh_url,
-            {"refresh": str(refresh)},
             format="json",
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
+        self.assertNotIn("refresh", response.data)
 
     def test_logout_blacklists_refresh_token(self):
         user = self.create_patient_user(username="logout_patient", email="logout@example.com")
         refresh = RefreshToken.for_user(user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        self.client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = str(refresh)
 
         response = self.client.post(
             self.logout_url,
-            {"refresh": str(refresh)},
             format="json",
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         second_response = self.client.post(
             self.refresh_url,
-            {"refresh": str(refresh)},
             format="json",
         )
         self.assertEqual(second_response.status_code, status.HTTP_401_UNAUTHORIZED)

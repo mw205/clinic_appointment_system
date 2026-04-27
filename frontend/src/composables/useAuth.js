@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue'
+import { api, setAccessToken, clearAuthQueue } from '@/lib/api'
 
 export const getDefaultRouteForRole = (role) => {
   switch (role) {
@@ -14,63 +15,96 @@ export const getDefaultRouteForRole = (role) => {
       return '/login'
   }
 }
-const user = ref({
-  id: 25,
-  username: 'doctor_dennis76',
-  email: 'ttorres@example.org',
-  first_name: 'Kimberly',
-  last_name: 'Erickson',
-  phone_number: '+1-969-402-8036',
-  primary_role: 'Doctor',
-  groups: ['Doctor'],
-})
+
+const user = ref(null)
 const isInitialized = ref(false)
 const isLoading = ref(false)
+const authReady = ref(false)
 
-const getAuthenticantionHeaders = () => {
-  const headers = {
-    'Content-Type': 'application/json',
-  }
-  const token = localStorage.getItem('access_token')
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  return headers
-}
 const getUserRole = () => {
-  return user.value['primary_role']
+  return user.value?.primary_role
 }
 
 export const useAuth = () => {
-  const isAuthenticated = computed(() => !user.value)
-  const checkSession = () => {
-    isLoading.value = true
-    try {
-      const storedUser = localStorage.getItem('clinic_user')
+  const isAuthenticated = computed(() => !!user.value)
 
-      if (storedUser) {
-        user.value = JSON.parse(storedUser)
-      }
+  const checkSession = async () => {
+    isLoading.value = true
+    
+    // Clean up legacy localStorage items from old auth flow
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('clinic_user')
+
+    try {
+      const response = await api.post('/accounts/refresh/')
+      const newAccessToken = response.data.access || response.data.access_token || response.data
+      setAccessToken(newAccessToken)
+
+      const userRes = await api.get('/accounts/me/')
+      user.value = userRes.data
+    } catch (error) {
+      user.value = null
+      setAccessToken(null)
     } finally {
       isInitialized.value = true
+      isLoading.value = false
+      authReady.value = true
+    }
+  }
+
+  const login = async (username, password) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/login/', { username, password })
+      const newAccessToken = response.data.access || response.data.access_token || response.data
+      setAccessToken(newAccessToken)
+      
+      const userRes = await api.get('/accounts/me/')
+      user.value = userRes.data
+      return user.value
+    } finally {
       isLoading.value = false
     }
   }
 
-  const login = () => {}
-  const register = () => {}
-  const logout = () => {
-    //Todo: send request for logout here
-    localStorage.removeItem('clinic_user')
-    localStorage.removeItem('access_token')
-    user.value = null
+  const register = async (userData) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/register/', userData)
+      const newAccessToken = response.data.access || response.data.access_token || response.data
+      setAccessToken(newAccessToken)
+      
+      const userRes = await api.get('/accounts/me/')
+      user.value = userRes.data
+      return user.value
+    } finally {
+      isLoading.value = false
+    }
   }
-  const loginWithSocial = () => {}
+
+  const logout = async () => {
+    try {
+      await api.post('/accounts/logout/')
+    } catch (error) {
+      console.error('Logout API failed', error)
+    } finally {
+      setAccessToken(null)
+      user.value = null
+      clearAuthQueue()
+      window.location.href = '/login'
+    }
+  }
+
+  const loginWithSocial = () => {
+    console.warn("Social login not implemented.")
+  }
 
   return {
     user,
     isInitialized,
     isLoading,
+    authReady,
     isAuthenticated,
     checkSession,
     login,
@@ -78,6 +112,5 @@ export const useAuth = () => {
     logout,
     loginWithSocial,
     getUserRole,
-    getAuthenticantionHeaders,
   }
 }
