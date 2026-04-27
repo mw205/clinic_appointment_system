@@ -467,3 +467,54 @@ class StaffUserSerializer(serializers.ModelSerializer):
                 return role
         
         return None
+    
+class StaffUserUpdateSerializer(serializers.Serializer):
+    is_active = serializers.BooleanField(required=False)
+    groups = serializers.ListField(
+        child=serializers.CharField(), 
+        required=False
+    )
+
+    def validate_groups(self, value):
+
+        if value == []:
+            raise serializers.ValidationError(
+                "User must have at least one role."
+            )
+
+        unique_names = list(set(value))
+        groups = list(Group.objects.filter(name__in=unique_names))
+
+        if len(groups) != len(unique_names):
+            existing_names = {g.name for g in groups}
+            invalid = set(unique_names) - existing_names
+            raise serializers.ValidationError(
+                f"Invalid groups: {', '.join(invalid)}"
+            )
+
+       
+        return groups
+    
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError(
+                "No data provided for update."
+            )
+        return attrs
+    
+
+    def update(self, instance, validated_data):
+        update_fields = []
+
+        if 'is_active' in validated_data:
+            instance.is_active = validated_data['is_active']
+            update_fields.append('is_active')
+
+        if 'groups' in validated_data:
+            instance.groups.set(validated_data['groups'])
+        
+        if update_fields:
+            instance.save(update_fields=update_fields)
+        
+
+        return instance

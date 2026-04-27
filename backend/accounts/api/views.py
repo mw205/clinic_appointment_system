@@ -12,8 +12,8 @@ from rest_framework.filters import SearchFilter
 
 
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer
-from accounts.rbac import is_patient, is_doctor
+from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer
+from accounts.rbac import is_patient, is_doctor, is_admin
 from accounts.models import DoctorProfile, PatientProfile, User
 from accounts.api.permissions import IsAdminOrReceptionist
 
@@ -229,4 +229,20 @@ class UserViewSet(ReadOnlyModelViewSet):
     pagination_class = UserPagination
     filter_backends = [SearchFilter]
     search_fields = ["username", "email", "first_name", "last_name"]
+
+    def partial_update(self, request, *args, **kwargs):
+        user = request.user
+
+        if not is_admin(user):
+            raise PermissionDenied("Only admin users can update staff user details.")
+        
+        instance = self.get_object()
+        serializer = StaffUserUpdateSerializer(instance=instance, data=request.data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        output_serializer = StaffUserSerializer(instance)
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+
 
