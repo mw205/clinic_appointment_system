@@ -21,6 +21,11 @@ const router = createRouter({
           component: () => import('@/views/doctor/DoctorScheduleDashboard.vue'),
         },
         {
+          path: '/doctor/queue',
+          name: 'DoctorDailyQueue',
+          component: () => import('@/views/doctor/DailyQueue.vue')
+        },
+        {
           path: '/receptionist/schedules',
           name: 'ReceptionistScheduleDashboard',
           component: () => import('@/views/receptionist/ReceptionistScheduleDashboard.vue'),
