@@ -172,7 +172,11 @@ class PatientRegistrationSerializer(serializers.Serializer):
 
     # PatientProfile fields
     date_of_birth = serializers.DateField()
-    blood_type = serializers.CharField()
+    blood_type = serializers.ChoiceField(
+    choices=[
+        "A+", "A-", "B+", "B-",
+        "AB+", "AB-", "O+", "O-"
+    ])
     gender = serializers.ChoiceField(choices=[
     ("male", "Male"),
     ("female", "Female"),
@@ -207,10 +211,6 @@ class PatientRegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError("Date of birth cannot be in the future.")
         return value
     
-    def validate_blood_type(self, value):
-        if value not in ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]:
-            raise serializers.ValidationError("Invalid blood type.")
-        return value
     
     def validate_phone_number(self, value):
         value = value.strip()
@@ -292,3 +292,117 @@ class PatientRegistrationSerializer(serializers.Serializer):
             PatientProfile.objects.create(user=user, **profile_data)
 
         return user
+
+
+class CurrentUserUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False)
+    phone_number = serializers.CharField(required=False)
+
+    def validate_first_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("This field cannot be empty.")
+        return value.strip()
+
+    def validate_last_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("This field cannot be empty.")
+        return value.strip()
+    
+
+    def validate_email(self,value):
+        value = value.strip().lower()
+
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        if User.objects.filter(email=value).exclude(id=user.id).exists():
+            raise serializers.ValidationError("Email is already registered.")
+        return value
+    
+    
+    def validate_phone_number(self, value):
+        value = value.strip()
+
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        # check format
+        if not re.fullmatch(r'^\+?\d+$', value):
+            raise serializers.ValidationError(
+                "Phone number must contain only digits and optional leading '+'."
+            )
+
+        
+        digits_only = value.lstrip('+')
+
+        # validate digit length only
+        if len(digits_only) < 10 or len(digits_only) > 15:
+            raise serializers.ValidationError(
+                "Phone number must be between 10 and 15 digits."
+            )
+        
+        normalized_phone = '+' + digits_only if value.startswith('+') else digits_only
+
+        if User.objects.filter(phone_number=normalized_phone).exclude(id=user.id).exists():
+            raise serializers.ValidationError("Phone number is already registered.")
+        
+        return normalized_phone
+
+    def update(self, instance, validated_data):
+
+        if not validated_data:
+            raise serializers.ValidationError("No data provided for update.")
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save(update_fields=list(validated_data.keys()))
+        return instance
+    
+
+class CurrentPatientProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatientProfile
+        fields = [
+            "date_of_birth",
+            "blood_type",
+            "gender",   
+            ]
+
+
+class CurrentPatientProfileUpdateSerializer(serializers.Serializer):
+    date_of_birth = serializers.DateField(required=False)
+    blood_type = serializers.ChoiceField(
+    choices=[
+        "A+", "A-", "B+", "B-",
+        "AB+", "AB-", "O+", "O-"
+    ],
+    required=False
+)
+    gender = serializers.ChoiceField(
+        choices=[
+            ("male", "Male"),
+            ("female", "Female"),
+        ],
+        required=False,
+    )
+
+    def validate_date_of_birth(self, value):
+        
+        if value > date.today():
+            raise serializers.ValidationError("Date of birth cannot be in the future.")
+
+        return value
+
+    def update(self, instance, validated_data):
+        
+        if not validated_data:
+            raise serializers.ValidationError("No data provided for update.")
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save(update_fields=list(validated_data.keys()))
+        return instance
