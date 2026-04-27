@@ -434,3 +434,36 @@ class CurrentDoctorProfileUpdateSerializer(serializers.Serializer):
 
         instance.save(update_fields=list(validated_data.keys()))
         return instance
+    
+
+class StaffUserSerializer(serializers.ModelSerializer):
+    groups = serializers.SerializerMethodField()
+    primary_role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "is_active",
+            "primary_role",
+            "groups"
+        ]
+    
+    def get_groups(self, obj):
+        return list(obj.groups.values_list('name', flat=True))
+    
+    def get_primary_role(self, obj):
+        groups = list(obj.groups.values_list('name', flat=True))
+        
+        priorty_roles = ["Admin", "Receptionist", "Doctor", "Patient"]
+
+        for role in priorty_roles:
+            if role in groups:
+                return role
+        
+        return None

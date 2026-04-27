@@ -6,10 +6,16 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.exceptions import PermissionDenied, NotFound
+from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.filters import SearchFilter
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer
+
+
+from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer
 from accounts.rbac import is_patient, is_doctor
-from accounts.models import DoctorProfile, PatientProfile
+from accounts.models import DoctorProfile, PatientProfile, User
+from accounts.api.permissions import IsAdminOrReceptionist
 
 
 def set_refresh_cookie(response, refresh_token):
@@ -31,6 +37,8 @@ def delete_refresh_cookie(response):
         samesite=settings.AUTH_REFRESH_COOKIE_SAMESITE,
     )
 
+class UserPagination(PageNumberPagination):
+    page_size = 20
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -210,3 +218,15 @@ class CurrentDoctorProfileView(APIView):
         profile = serializer.save()
 
         return Response(CurrentDoctorProfileSerializer(profile).data, status=status.HTTP_200_OK)
+    
+
+class UserViewSet(ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminOrReceptionist]
+    queryset = (
+        User.objects.prefetch_related("groups").all().order_by("id")
+    )
+    serializer_class = StaffUserSerializer
+    pagination_class = UserPagination
+    filter_backends = [SearchFilter]
+    search_fields = ["username", "email", "first_name", "last_name"]
+
