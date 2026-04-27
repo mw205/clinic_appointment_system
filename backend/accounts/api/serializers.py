@@ -406,3 +406,31 @@ class CurrentPatientProfileUpdateSerializer(serializers.Serializer):
 
         instance.save(update_fields=list(validated_data.keys()))
         return instance
+    
+
+class CurrentDoctorProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoctorProfile
+        fields = [
+            "specialization",
+        ]
+
+class CurrentDoctorProfileUpdateSerializer(serializers.Serializer):
+    specialization = serializers.CharField(required=False)
+
+    def validate_specialization(self, value):
+        if value.strip() == "":
+            raise serializers.ValidationError(
+                "Specialization cannot be empty.")
+        return value.strip()
+
+    def update(self, instance, validated_data):
+        
+        if not validated_data:
+            raise serializers.ValidationError("No data provided for update.")
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save(update_fields=list(validated_data.keys()))
+        return instance

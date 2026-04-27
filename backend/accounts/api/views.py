@@ -7,9 +7,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.exceptions import PermissionDenied, NotFound
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer
-from accounts.rbac import is_patient
-from accounts.models import PatientProfile
+from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer
+from accounts.rbac import is_patient, is_doctor
+from accounts.models import DoctorProfile, PatientProfile
 
 
 def set_refresh_cookie(response, refresh_token):
@@ -181,3 +181,32 @@ class CurrentPatientProfileView(APIView):
         profile = serializer.save()
 
         return Response(CurrentPatientProfileSerializer(profile).data, status=status.HTTP_200_OK)
+
+class CurrentDoctorProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request):
+        user = request.user
+        if not is_doctor(user):
+            raise PermissionDenied("Only doctors can access this resource.")
+        
+        try:
+            return user.doctorprofile
+        except DoctorProfile.DoesNotExist:
+            raise NotFound("Doctor profile not found.")
+        
+    def get(self, request):
+        profile = self.get_object(request)
+
+        serializer = CurrentDoctorProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    def patch(self, request):
+        profile = self.get_object(request)
+
+        serializer = CurrentDoctorProfileUpdateSerializer(instance=profile, data=request.data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save()
+
+        return Response(CurrentDoctorProfileSerializer(profile).data, status=status.HTTP_200_OK)
