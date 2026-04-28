@@ -48,7 +48,6 @@ def create_users(role, count):
         user = User.objects.create_user(
             username=username,
             password="password123",
-            role=role,
             first_name=first_name,
             last_name=last_name,
             email=fake.email(),

@@ -460,9 +460,9 @@ class StaffUserSerializer(serializers.ModelSerializer):
     def get_primary_role(self, obj):
         groups = list(obj.groups.values_list('name', flat=True))
         
-        priorty_roles = ["Admin", "Receptionist", "Doctor", "Patient"]
+        role_priority = ["Admin", "Receptionist", "Doctor", "Patient"]
 
-        for role in priorty_roles:
+        for role in role_priority:
             if role in groups:
                 return role
         
@@ -479,7 +479,7 @@ class StaffUserUpdateSerializer(serializers.Serializer):
 
         if value == []:
             raise serializers.ValidationError(
-                "User must have at least one role."
+                "User must have at least one assigned group."
             )
 
         unique_names = list(set(value))
