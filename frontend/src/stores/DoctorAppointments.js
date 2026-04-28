@@ -10,12 +10,12 @@ export const useDoctorAppointmentsStore = defineStore('doctorAppointments', () =
   const actionStatus = ref(null)
   const actionMessage = ref('')
 
-  async function loadDailyQueue() {
+  async function loadDailyQueue(params = {}) {
     loading.value = true
 
     try {
       dailyQueue.value = await doctorAppointmentsService.getDailyQueue({
-        // status: 'confirmed',
+        ...params
         // date: new Date().toISOString().slice(0,10)
       });
     }finally {
