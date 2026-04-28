@@ -9,6 +9,7 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 
@@ -259,7 +260,7 @@ class UserViewSet(
     )
     serializer_class = StaffUserSerializer
     pagination_class = UserPagination
-    filter_backends = [SearchFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ["username", "email", "first_name", "last_name"]
     http_method_names = ["get", "patch", "head", "options"]
 
@@ -268,7 +269,19 @@ class UserViewSet(
             return [IsAuthenticated(), IsAdminOnly()]
         return [IsAuthenticated(), IsAdminOrReceptionist()]
 
-    def partial_update(self, request, *args, **kwargs):        
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        role = self.request.query_params.get('role')
+        if role:
+            queryset = queryset.filter(groups__name=role)
+        return queryset
+
+    def partial_update(self, request, *args, **kwargs):
+        user = request.user
+
+        if not is_admin(user):
+            raise PermissionDenied("Only admin users can update staff user details.")
+        
         instance = self.get_object()
         serializer = StaffUserUpdateSerializer(instance=instance, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
