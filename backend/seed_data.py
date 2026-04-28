@@ -19,7 +19,7 @@ from scheduling.models import DoctorSchedule, ScheduleException
 
 fake = Faker()
 
-ROLE_TO_GROUP = {
+USER_TYPE_TO_GROUP = {
     "admin": "Admin",
     "receptionist": "Receptionist",
     "doctor": "Doctor",
@@ -32,18 +32,18 @@ def clean_db():
     User.objects.exclude(is_superuser=True).delete()
     print("✅ Database cleaned (Superusers preserved).")
 
-def create_users(role, count):
+def create_users(user_type, count):
     users = []
-    group_name = ROLE_TO_GROUP[role]
+    group_name = USER_TYPE_TO_GROUP[user_type]
     group = Group.objects.filter(name=group_name).first()
 
     if group is None:
-        raise RuntimeError(f"Required group '{group_name}' does not exist. Run role setup first.")
+        raise RuntimeError(f"Required group '{group_name}' does not exist. Run auth group setup first.")
 
     for _ in range(count):
         first_name = fake.first_name()
         last_name = fake.last_name()
-        username = f"{role}_{fake.unique.user_name()}"
+        username = f"{user_type}_{fake.unique.user_name()}"
         
         user = User.objects.create_user(
             username=username,
