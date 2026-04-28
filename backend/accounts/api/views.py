@@ -1,21 +1,21 @@
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import mixins, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.exceptions import PermissionDenied, NotFound
-from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.viewsets import GenericViewSet
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter
 
 
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer
+from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer, ChangePasswordSerializer
 from accounts.rbac import is_patient, is_doctor, is_admin
 from accounts.models import DoctorProfile, PatientProfile, User
-from accounts.api.permissions import IsAdminOrReceptionist
+from accounts.api.permissions import IsAdminOrReceptionist, IsAdminOnly
 
 
 def set_refresh_cookie(response, refresh_token):
@@ -83,6 +83,33 @@ class CurrentUserView(APIView):
         user = serializer.save()
         
         return Response(CurrentUserSerializer(user).data, status=status.HTTP_200_OK)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            instance=request.user,
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        refresh_token = request.COOKIES.get(settings.AUTH_REFRESH_COOKIE_NAME)
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except TokenError:
+                pass
+
+        response = Response(
+            {"detail": "Password updated successfully. Please log in again."},
+            status=status.HTTP_200_OK,
+        )
+        delete_refresh_cookie(response)
+        return response
     
 
 class LogoutView(APIView):
@@ -220,7 +247,12 @@ class CurrentDoctorProfileView(APIView):
         return Response(CurrentDoctorProfileSerializer(profile).data, status=status.HTTP_200_OK)
     
 
-class UserViewSet(ReadOnlyModelViewSet):
+class UserViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    GenericViewSet,
+):
     permission_classes = [IsAuthenticated, IsAdminOrReceptionist]
     queryset = (
         User.objects.prefetch_related("groups").all().order_by("id")
@@ -229,13 +261,14 @@ class UserViewSet(ReadOnlyModelViewSet):
     pagination_class = UserPagination
     filter_backends = [SearchFilter]
     search_fields = ["username", "email", "first_name", "last_name"]
+    http_method_names = ["get", "patch", "head", "options"]
 
-    def partial_update(self, request, *args, **kwargs):
-        user = request.user
+    def get_permissions(self):
+        if self.action == "partial_update":
+            return [IsAuthenticated(), IsAdminOnly()]
+        return [IsAuthenticated(), IsAdminOrReceptionist()]
 
-        if not is_admin(user):
-            raise PermissionDenied("Only admin users can update staff user details.")
-        
+    def partial_update(self, request, *args, **kwargs):        
         instance = self.get_object()
         serializer = StaffUserUpdateSerializer(instance=instance, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -243,6 +276,4 @@ class UserViewSet(ReadOnlyModelViewSet):
 
         output_serializer = StaffUserSerializer(instance)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
-
-
 

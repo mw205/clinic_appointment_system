@@ -8,3 +8,7 @@ class IsAdminOrReceptionist(BasePermission):
     def has_permission(self, request, view):
         user = request.user
         return is_admin(user) or is_receptionist(user)
+    
+class IsAdminOnly(BasePermission):
+    def has_permission(self, request, view):
+        return is_admin(request.user)
