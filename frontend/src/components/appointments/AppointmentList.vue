@@ -10,6 +10,10 @@ defineProps({
     type: Function,
     required: true,
   },
+  emptyMessage: {
+    type: String,
+    default: "No appointments found.",
+  },
 });
 
 const emit = defineEmits(["check-in", "no-show", "complete", "view-record"]);
@@ -17,6 +21,13 @@ const emit = defineEmits(["check-in", "no-show", "complete", "view-record"]);
 
 <template>
   <div class="space-y-3">
+    <div
+      v-if="appointments.length === 0"
+      class="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500"
+    >
+      {{ emptyMessage }}
+    </div>
+
     <AppointmentCard
       v-for="appointment in appointments"
       :key="appointment.id"
