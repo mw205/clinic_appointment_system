@@ -74,8 +74,9 @@ class AppointmentViewSet(
             return [IsAuthenticated(), CanCancelAppointment()]
         if self.action == "reschedule":
             return [IsAuthenticated(), CanRescheduleAppointment()]
-        if self.action == "doctor_queue":
+        if self.action == "doctor_queue" or self.action == "hide":
             return [IsAuthenticated(), IsDoctorRole()]
+
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -213,3 +214,15 @@ class AppointmentViewSet(
         serializer = AppointmentSerializer(queryset, many=True, context={"request": request})
 
         return success_response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def hide(self, request, pk=None):
+        appointment = self.get_object()
+
+        if request.user.doctorprofile.id != appointment.doctor_id:
+            raise PermissionDenied("You do not have permission")
+
+        appointment.status = Appointment.Status.NO_SHOW
+        appointment.check_in_time = datetime.now()
+        appointment.save()
+        return success_response(message="Appointment hidden in successfully")
