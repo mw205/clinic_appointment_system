@@ -5,4 +5,8 @@ export const API_ENDPOINTS = {
     EXCEPTIONS: '/scheduling/exceptions/',
     AVAILABLE_SLOTS: '/scheduling/available/',
   },
+  ACCOUNTS: {
+    BASE: '/accounts',
+    USERS: '/users/',
+  },
 }
