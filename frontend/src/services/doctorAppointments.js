@@ -16,3 +16,8 @@ export async function checkInAppointment(appointment_id)
 {
   return await api.post(`/appointments/${appointment_id}/check_in/`)
 }
+
+export async function hideAppointment(appointment_id)
+{
+  return await api.post(`/appointments/${appointment_id}/hide/`)
+}
