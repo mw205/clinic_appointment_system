@@ -6,10 +6,16 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.exceptions import PermissionDenied, NotFound
+from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.filters import SearchFilter
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer
-from accounts.rbac import is_patient
-from accounts.models import PatientProfile
+
+
+from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer
+from accounts.rbac import is_patient, is_doctor, is_admin
+from accounts.models import DoctorProfile, PatientProfile, User
+from accounts.api.permissions import IsAdminOrReceptionist
 
 
 def set_refresh_cookie(response, refresh_token):
@@ -31,6 +37,8 @@ def delete_refresh_cookie(response):
         samesite=settings.AUTH_REFRESH_COOKIE_SAMESITE,
     )
 
+class UserPagination(PageNumberPagination):
+    page_size = 20
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -181,3 +189,60 @@ class CurrentPatientProfileView(APIView):
         profile = serializer.save()
 
         return Response(CurrentPatientProfileSerializer(profile).data, status=status.HTTP_200_OK)
+
+class CurrentDoctorProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request):
+        user = request.user
+        if not is_doctor(user):
+            raise PermissionDenied("Only doctors can access this resource.")
+        
+        try:
+            return user.doctorprofile
+        except DoctorProfile.DoesNotExist:
+            raise NotFound("Doctor profile not found.")
+        
+    def get(self, request):
+        profile = self.get_object(request)
+
+        serializer = CurrentDoctorProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    def patch(self, request):
+        profile = self.get_object(request)
+
+        serializer = CurrentDoctorProfileUpdateSerializer(instance=profile, data=request.data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save()
+
+        return Response(CurrentDoctorProfileSerializer(profile).data, status=status.HTTP_200_OK)
+    
+
+class UserViewSet(ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminOrReceptionist]
+    queryset = (
+        User.objects.prefetch_related("groups").all().order_by("id")
+    )
+    serializer_class = StaffUserSerializer
+    pagination_class = UserPagination
+    filter_backends = [SearchFilter]
+    search_fields = ["username", "email", "first_name", "last_name"]
+
+    def partial_update(self, request, *args, **kwargs):
+        user = request.user
+
+        if not is_admin(user):
+            raise PermissionDenied("Only admin users can update staff user details.")
+        
+        instance = self.get_object()
+        serializer = StaffUserUpdateSerializer(instance=instance, data=request.data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        output_serializer = StaffUserSerializer(instance)
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+
+
