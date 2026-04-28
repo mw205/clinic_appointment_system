@@ -360,6 +360,43 @@ class CurrentUserUpdateSerializer(serializers.Serializer):
         
         instance.save(update_fields=list(validated_data.keys()))
         return instance
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        user = self.instance
+        current_password = attrs.get("current_password")
+        new_password = attrs.get("new_password")
+        new_password_confirm = attrs.get("new_password_confirm")
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError({
+                "current_password": "Current password is incorrect."
+            })
+
+        if new_password != new_password_confirm:
+            raise serializers.ValidationError({
+                "new_password_confirm": "Password confirmation does not match password."
+            })
+
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({
+                "new_password": list(e.messages)
+            })
+
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.instance
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        return user
     
 
 class CurrentPatientProfileSerializer(serializers.ModelSerializer):
@@ -517,4 +554,4 @@ class StaffUserUpdateSerializer(serializers.Serializer):
             instance.save(update_fields=update_fields)
         
 
-        return instance
+        return instance 

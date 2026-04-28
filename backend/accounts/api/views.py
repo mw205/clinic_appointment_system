@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import mixins, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.viewsets import GenericViewSet
@@ -12,7 +12,7 @@ from rest_framework.filters import SearchFilter
 
 
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer
+from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer, ChangePasswordSerializer
 from accounts.rbac import is_patient, is_doctor, is_admin
 from accounts.models import DoctorProfile, PatientProfile, User
 from accounts.api.permissions import IsAdminOrReceptionist, IsAdminOnly
@@ -83,6 +83,33 @@ class CurrentUserView(APIView):
         user = serializer.save()
         
         return Response(CurrentUserSerializer(user).data, status=status.HTTP_200_OK)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            instance=request.user,
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        refresh_token = request.COOKIES.get(settings.AUTH_REFRESH_COOKIE_NAME)
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except TokenError:
+                pass
+
+        response = Response(
+            {"detail": "Password updated successfully. Please log in again."},
+            status=status.HTTP_200_OK,
+        )
+        delete_refresh_cookie(response)
+        return response
     
 
 class LogoutView(APIView):
@@ -249,5 +276,4 @@ class UserViewSet(
 
         output_serializer = StaffUserSerializer(instance)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
-
 
