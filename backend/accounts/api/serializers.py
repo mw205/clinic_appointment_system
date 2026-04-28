@@ -406,3 +406,115 @@ class CurrentPatientProfileUpdateSerializer(serializers.Serializer):
 
         instance.save(update_fields=list(validated_data.keys()))
         return instance
+    
+
+class CurrentDoctorProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoctorProfile
+        fields = [
+            "specialization",
+        ]
+
+class CurrentDoctorProfileUpdateSerializer(serializers.Serializer):
+    specialization = serializers.CharField(required=False)
+
+    def validate_specialization(self, value):
+        if value.strip() == "":
+            raise serializers.ValidationError(
+                "Specialization cannot be empty.")
+        return value.strip()
+
+    def update(self, instance, validated_data):
+        
+        if not validated_data:
+            raise serializers.ValidationError("No data provided for update.")
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save(update_fields=list(validated_data.keys()))
+        return instance
+    
+
+class StaffUserSerializer(serializers.ModelSerializer):
+    groups = serializers.SerializerMethodField()
+    primary_role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "is_active",
+            "primary_role",
+            "groups"
+        ]
+    
+    def get_groups(self, obj):
+        return list(obj.groups.values_list('name', flat=True))
+    
+    def get_primary_role(self, obj):
+        groups = list(obj.groups.values_list('name', flat=True))
+        
+        priorty_roles = ["Admin", "Receptionist", "Doctor", "Patient"]
+
+        for role in priorty_roles:
+            if role in groups:
+                return role
+        
+        return None
+    
+class StaffUserUpdateSerializer(serializers.Serializer):
+    is_active = serializers.BooleanField(required=False)
+    groups = serializers.ListField(
+        child=serializers.CharField(), 
+        required=False
+    )
+
+    def validate_groups(self, value):
+
+        if value == []:
+            raise serializers.ValidationError(
+                "User must have at least one role."
+            )
+
+        unique_names = list(set(value))
+        groups = list(Group.objects.filter(name__in=unique_names))
+
+        if len(groups) != len(unique_names):
+            existing_names = {g.name for g in groups}
+            invalid = set(unique_names) - existing_names
+            raise serializers.ValidationError(
+                f"Invalid groups: {', '.join(invalid)}"
+            )
+
+       
+        return groups
+    
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError(
+                "No data provided for update."
+            )
+        return attrs
+    
+
+    def update(self, instance, validated_data):
+        update_fields = []
+
+        if 'is_active' in validated_data:
+            instance.is_active = validated_data['is_active']
+            update_fields.append('is_active')
+
+        if 'groups' in validated_data:
+            instance.groups.set(validated_data['groups'])
+        
+        if update_fields:
+            instance.save(update_fields=update_fields)
+        
+
+        return instance

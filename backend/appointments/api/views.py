@@ -27,11 +27,11 @@ from appointments.api.serializers import (
 from appointments.exceptions import BookingBadRequestError
 from appointments.models import Appointment
 from appointments.services.booking_service import cancel_appointment, create_appointment
-from appointments.services.doctor_appointments_service import get_doctor_appointments
+from appointments.services.doctor_appointments_service import get_doctor_appointments, get_doctor_daily_queue
 from appointments.services.reschedule_service import reschedule_appointment
 
 from accounts.rbac import ADMIN, RECEPTIONIST, is_receptionist, is_doctor, is_patient, user_has_any_group
-
+from core.responses import *
 
 
 def get_role_filtered_appointments_queryset(user):
@@ -167,14 +167,14 @@ class AppointmentViewSet(
     def check_in(self, request, pk=None):
         appointment = self.get_object()
 
-        if not request.user.has_perm("appointments.change_appointment"):
+        if request.user.doctorprofile.id != appointment.doctor_id:
             raise PermissionDenied("You do not have permission")
-        if appointment.status != Appointment.Status.REQUESTED:
+        if appointment.status != Appointment.Status.CONFIRMED:
             return Response({"error": "Appointment already processed"}, status=HTTP_400_BAD_REQUEST)
         appointment.status = Appointment.Status.CHECKED_IN
         appointment.check_in_time = datetime.now()
         appointment.save()
-        return Response({"message": "Appointment checked in"}, HTTP_200_OK)
+        return success_response(message="Appointment checked in successfully")
 
     @action(detail=False, methods=['get'], url_path='doctor/appointments', url_name='doctor-appointments')
     def doctor_appointments(self, request):
@@ -193,4 +193,23 @@ class AppointmentViewSet(
 
         serializer = AppointmentSerializer(queryset, many=True, context={"request": request})
 
-        return Response(serializer.data, status=HTTP_200_OK)
+        return success_response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path="doctor/queue", url_name='doctor-daily-queue')
+    def doctor_queue(self, request):
+        user = request.user
+
+        if not is_doctor(user):
+            raise PermissionDenied("Only doctors can access this endpoint.")
+
+        try:
+            doctor_profile = user.doctorprofile
+        except:
+            raise PermissionDenied("Doctor profile not found.")
+
+        queryset = get_doctor_daily_queue(doctor_profile.id)
+        queryset = self.filter_queryset(queryset)
+
+        serializer = AppointmentSerializer(queryset, many=True, context={"request": request})
+
+        return success_response(serializer.data)

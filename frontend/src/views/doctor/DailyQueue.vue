@@ -1,12 +1,18 @@
 <script setup>
 import {useDoctorAppointmentsStore} from "@/stores/DoctorAppointments.js";
-import {onMounted} from "vue";
+import {onMounted, watch} from "vue";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card/index.ts";
 import {Button} from "@/components/ui/button/index.ts";
 import {Tabs, TabsList, TabsTrigger, TabsContent} from "@/components/ui/tabs/index.ts";
 import {Badge} from "@/components/ui/badge/index.ts";
+import {Users, UserCheck} from "lucide-vue-next";
+import {storeToRefs} from "pinia";
+import {toast} from "vue-sonner";
 
 const store = useDoctorAppointmentsStore();
+const { actionStatus, actionMessage } = storeToRefs(store)
+
+
 
 onMounted(() => {
     store.loadDailyQueue()
@@ -20,6 +26,30 @@ const formattedDate = new Intl.DateTimeFormat('en-US', {
   month: 'long',
   day: 'numeric',
 }).format(today)
+
+async function handleCheckIn(id) {
+  try {
+    const res = await store.checkInAppointment(id)
+    toast.success(res.message || 'Checked in successfully')
+  } catch (err) {
+    console.error(err)
+    toast.error(err.response?.data?.message || 'Something went wrong')
+  }
+}
+
+// watch(actionStatus, (status) => {
+//   if (!status) return
+//
+//   if (status === 'success') {
+//     toast.success(actionMessage.value)
+//   } else if (status === 'error') {
+//     toast.error(actionMessage.value)
+//   }
+//
+//   actionStatus.value = null
+//   actionMessage.value = ''
+// })
+
 </script>
 
 <template>
@@ -53,7 +83,7 @@ const formattedDate = new Intl.DateTimeFormat('en-US', {
               <div class="flex items-start justify-between gap-4">
                 <div class="flex items-start gap-4 flex-1">
                   <div class="p-2 bg-blue-100 rounded-lg">
-<!--                    <Users class="w-5 h-5 text-blue-600" />-->
+                    <Users class="w-5 h-5 text-blue-600" />
                   </div>
                   <div class="flex-1">
                     <div class="flex items-center gap-3">
@@ -79,48 +109,39 @@ const formattedDate = new Intl.DateTimeFormat('en-US', {
                 </div>
 
 <!--                actions -->
-<!--                <div class="flex gap-2 flex-shrink-0">-->
-<!--                  <template v-if="apt.status === 'pending'">-->
-<!--                    <Button size="sm" variant="outline" >-->
-<!--                      <CheckCircle class="w-4 h-4 mr-1" /> Confirm-->
-<!--                      confirm-->
-<!--                    </Button>-->
-<!--                    <Button size="sm" variant="outline" @click="handleDecline(apt.id)">-->
-<!--                      <XCircle class="w-4 h-4 mr-1" /> Decline-->
-<!--                    </Button>-->
-<!--                  </template>-->
+                <div class="flex gap-2 flex-shrink-0">
 
-<!--                  <Button-->
-<!--                    v-if="apt.status === 'confirmed'"-->
-<!--                    size="sm"-->
-<!--                    variant="outline"-->
-<!--                    @click="handleCheckIn(apt.id)"-->
-<!--                  >-->
-<!--                    <UserCheck class="w-4 h-4 mr-1" /> Check In-->
-<!--                  </Button>-->
+                  <Button
+                    v-if="apt.status === 'confirmed'"
+                    size="sm"
+                    variant="outline"
+                    @click="handleCheckIn(apt.id)"
+                  >
+                    <UserCheck class="w-4 h-4 mr-1" /> Check In
+                  </Button>
 
-<!--                  <template v-if="apt.status === 'checked-in'">-->
-<!--                    <Button-->
-<!--                      size="sm"-->
-<!--                      class="bg-green-600 hover:bg-green-700"-->
-<!--                      @click="handleComplete(apt.id)"-->
-<!--                    >-->
-<!--                      Start Consultation-->
-<!--                    </Button>-->
-<!--                    <Button size="sm" variant="outline" @click="handleNoShow(apt.id)">-->
-<!--                      No Show-->
-<!--                    </Button>-->
-<!--                  </template>-->
+                  <template v-if="apt.status === 'checked-in'">
+                    <Button
+                      size="sm"
+                      class="bg-green-600 hover:bg-green-700"
+                      @click="handleComplete(apt.id)"
+                    >
+                      Start Consultation
+                    </Button>
+                    <Button size="sm" variant="outline" @click="handleNoShow(apt.id)">
+                      No Show
+                    </Button>
+                  </template>
 
-<!--                  <Button-->
-<!--                    v-if="apt.status === 'completed'"-->
-<!--                    size="sm"-->
-<!--                    variant="outline"-->
-<!--                    @click="handleNavigate('records')"-->
-<!--                  >-->
-<!--                    View Record-->
-<!--                  </Button>-->
-<!--                </div>-->
+                  <Button
+                    v-if="apt.status === 'completed'"
+                    size="sm"
+                    variant="outline"
+                    @click="handleNavigate('records')"
+                  >
+                    View Record
+                  </Button>
+                </div>
               </div>
             </div>
           </TabsContent>
