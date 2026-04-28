@@ -55,7 +55,9 @@ INSTALLED_APPS = [
     'appointments.apps.AppointmentsConfig',
     'accounts.apps.AccountsConfig',
     'consultations.apps.ConsultationsConfig',
-    'scheduling.apps.SchedulingConfig'
+    'scheduling.apps.SchedulingConfig',
+    'analytics.apps.AnalyticsConfig',
+
 ]
 
 MIDDLEWARE = [
