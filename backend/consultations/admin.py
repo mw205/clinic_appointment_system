@@ -1,3 +1,3 @@
 from django.contrib import admin
-
-# Register your models here.
+from .models import ConsultationRecord, PrescriptionItem, RequestedTest
+admin.site.register([ConsultationRecord, PrescriptionItem, RequestedTest])

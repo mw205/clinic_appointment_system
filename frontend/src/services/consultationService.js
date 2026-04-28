@@ -1,46 +1,46 @@
-//the url of back end server
-
-export const BASE_URL = 'https://localhost:8000/api'
-
-export function getAuthenticantionHeaders() {
-  const token = localStorage.getItem('token')
-  return {
-    type: 'application/json',
-    method: `Bearer ${token}`,
-  }
-}
+import { api } from '@/lib/api'
 
 export async function fetchConsultation(appointmentId) {
-  const response = await fetch(`${BASE_URL}/consultations/?appointment=${appointmentId}`, {
-    headers: getAuthenticantionHeaders(),
+  const { data } = await api.get('/consultations/consultations/', {
+    params: { appointment: appointmentId },
   })
-  if (!response.ok) return null
-  return response.json()
+  return data
 }
 
-export async function createConsultation(data) {
-  const response = await fetch(`${BASE_URL}/consultations/`, {
-    method: 'POST',
-    headers: getAuthenticantionHeaders(),
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) throw new Error('error at creating consultaion')
-  return response.json()
+export async function createConsultation(payload) {
+  const { data } = await api.post('/consultations/consultations/', payload)
+  return data
 }
-export async function updateConsultation(id, data) {
-  const response = await fetch(`${BASE_URL}/consultations/${id}/`, {
-    method: 'PATCH',
-    headers: getAuthenticantionHeaders(),
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) throw new Error('error at updating consultation')
-  return response.json()
+
+export async function updateConsultation(id, payload) {
+  const { data } = await api.patch(`/consultations/consultations/${id}/`, payload)
+  return data
+}
+
+export async function completeConsultation(id) {
+  const { data } = await api.post(`/consultations/consultations/${id}/complete/`)
+  return data
 }
 
 export async function fetchConsultationSummary(id) {
-  const response = await fetch(`${BASE_URL}/consultations/${id}/summary/`, {
-    headers: getAuthenticantionHeaders(),
-  })
-  if (!response.ok) return null
-  return response.json()
+  const { data } = await api.get(`/consultations/consultations/${id}/summary/`)
+  return data
+}
+
+export async function createPrescription(payload) {
+  const { data } = await api.post('/consultations/prescriptions/', payload)
+  return data
+}
+
+export async function deletePrescription(id) {
+  await api.delete(`/consultations/prescriptions/${id}/`)
+}
+
+export async function createTest(payload) {
+  const { data } = await api.post('/consultations/tests/', payload)
+  return data
+}
+
+export async function deleteTest(id) {
+  await api.delete(`/consultations/tests/${id}/`)
 }

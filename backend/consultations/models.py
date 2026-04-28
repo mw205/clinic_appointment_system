@@ -25,7 +25,7 @@ class ConsultationRecord(models.Model):
     def __str__(self):
         return f"Consultation for Appointment #{self.appointment_id}"
 
-class PrescriptionItems(models.Model):
+class PrescriptionItem(models.Model):
 
     consultation = models.ForeignKey(
         ConsultationRecord,
