@@ -9,6 +9,7 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 
@@ -227,8 +228,15 @@ class UserViewSet(ReadOnlyModelViewSet):
     )
     serializer_class = StaffUserSerializer
     pagination_class = UserPagination
-    filter_backends = [SearchFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = ["username", "email", "first_name", "last_name"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        role = self.request.query_params.get('role')
+        if role:
+            queryset = queryset.filter(groups__name=role)
+        return queryset
 
     def partial_update(self, request, *args, **kwargs):
         user = request.user
