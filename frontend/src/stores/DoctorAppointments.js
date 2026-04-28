@@ -34,5 +34,18 @@ async function checkInAppointment(appointment_id) {
   }
 }
 
-  return { dailyQueue, pendingRequests, loading, loadDailyQueue, checkInAppointment, actionStatus, actionMessage };
+async function hideAppointment(appointment_id)
+{
+  loading.value = true
+  try {
+    const response = await doctorAppointmentsService.hideAppointment(appointment_id)
+    await loadDailyQueue()
+    return response.data
+  }finally {
+    loading.value = false
+  }
+
+}
+
+  return { dailyQueue, pendingRequests, loading, loadDailyQueue, checkInAppointment, actionStatus, actionMessage , hideAppointment};
 })
