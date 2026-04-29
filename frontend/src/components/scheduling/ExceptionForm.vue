@@ -1,5 +1,10 @@
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import DateTimeField from '@/components/scheduling/DateTimeField.vue'
+import {
+  EXCEPTION_TYPES,
+  defaultOffExceptionForm,
+  defaultWorkExceptionForm,
+} from '@/components/scheduling/models'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
@@ -11,12 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import Textarea from '@/components/ui/textarea/Textarea.vue'
-import DateTimeField from '@/components/scheduling/DateTimeField.vue'
-import {
-  EXCEPTION_TYPES,
-  defaultOffExceptionForm,
-  defaultWorkExceptionForm,
-} from '@/components/scheduling/models'
+import { computed, reactive, watch } from 'vue'
 
 const props = defineProps({
   doctorId: {
@@ -164,7 +164,7 @@ const handleCancel = () => {
 
 <template>
   <form class="space-y-4" @submit.prevent="handleSubmit">
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="felx flex-col">
       <div class="space-y-2">
         <Label>Exception Type</Label>
         <Select v-model="form.exception_type">
@@ -179,13 +179,8 @@ const handleCancel = () => {
         </Select>
       </div>
 
-      <DateTimeField
-        label="Exception Date"
-        :required="true"
-        :date-value="form.exception_date"
-        :error="errors.exception_date"
-        @update:date-value="form.exception_date = $event"
-      />
+      <DateTimeField label="Exception Date" :required="true" :date-value="form.exception_date"
+        :error="errors.exception_date" @update:date-value="form.exception_date = $event" class="mt-4" />
     </div>
 
     <div v-if="isWorkException" class="grid gap-4 md:grid-cols-2">
@@ -238,13 +233,7 @@ const handleCancel = () => {
     </div>
 
     <div class="flex items-center justify-end gap-2">
-      <Button
-        v-if="isEditMode"
-        type="button"
-        variant="outline"
-        :disabled="submitting"
-        @click="handleCancel"
-      >
+      <Button v-if="isEditMode" type="button" variant="outline" :disabled="submitting" @click="handleCancel">
         Cancel
       </Button>
       <Button type="submit" :disabled="submitting || !doctorId">
