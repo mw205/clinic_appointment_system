@@ -41,34 +41,25 @@
           <div v-if="errorMessage" class="text-red-500 text-sm text-center mt-2">
             {{ errorMessage }}
           </div>
+          
+          <div v-if="isUnverified" class="text-center mt-2">
+            <Button type="button" variant="link" @click="handleResendVerification" :disabled="isResending" class="text-blue-600 p-0 h-auto font-normal">
+              {{ isResending ? 'Sending...' : 'Resend verification email' }}
+            </Button>
+            <div v-if="resendMessage" class="text-green-600 text-sm mt-1">
+              {{ resendMessage }}
+            </div>
+          </div>
         </form>
 
-        <div class="relative">
-          <div class="absolute inset-0 flex items-center">
-            <span class="w-full border-t" />
-          </div>
-          <div class="relative flex justify-center text-xs uppercase">
-            <span class="bg-white px-2 text-gray-500">Or continue with</span>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <Button
-            variant="outline"
-            @click="handleSocialLogin('google')"
+        <div class="flex justify-center mb-6">
+          <button
+            @click="router.push('/forgot-password')"
+            class="text-sm text-blue-600 hover:underline"
             :disabled="isLoading"
           >
-            <Chrome class="mr-2 h-4 w-4" />
-            Google
-          </Button>
-          <Button
-            variant="outline"
-            @click="handleSocialLogin('facebook')"
-            :disabled="isLoading"
-          >
-            <Facebook class="mr-2 h-4 w-4" />
-            Facebook
-          </Button>
+            Forgot password?
+          </button>
         </div>
 
         <div class="text-center text-sm">
@@ -95,19 +86,24 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Activity, Chrome, Facebook } from "lucide-vue-next";
+import { Activity } from "lucide-vue-next";
 
 const router = useRouter();
-const { login, loginWithSocial, user } = useAuth();
+const { login, user, resendVerificationEmail } = useAuth();
 
 const username = ref("");
 const password = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
+const isUnverified = ref(false);
+const isResending = ref(false);
+const resendMessage = ref("");
 
 const handleLogin = async () => {
   isLoading.value = true;
   errorMessage.value = "";
+  isUnverified.value = false;
+  resendMessage.value = "";
   try {
     await login(username.value, password.value);
     router.push(getDefaultRouteForRole(user.value?.primary_role));
@@ -118,15 +114,20 @@ const handleLogin = async () => {
     if (dataErrors) {
         const errors = [];
         for (const [key, val] of Object.entries(dataErrors)) {
-            if (Array.isArray(val)) {
-                errors.push(`${key === 'non_field_errors' ? '' : key + ': '}${val.join(', ')}`);
-            } else {
-                errors.push(`${key === 'non_field_errors' ? '' : key + ': '}${val}`);
+            let msg = Array.isArray(val) ? val.join(', ') : val;
+            if (msg.includes("Please verify your email address before logging in.")) {
+                isUnverified.value = true;
             }
+            const noPrefixKeys = ['non_field_errors', 'detail', 'uid', 'token'];
+            const prefix = noPrefixKeys.includes(key) ? '' : `${key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}: `;
+            errors.push(`${prefix}${msg}`);
         }
         errorMessage.value = errors.join('\n');
     } else if (data?.detail) {
         errorMessage.value = data.detail;
+        if (data.detail.includes("Please verify your email address before logging in.")) {
+            isUnverified.value = true;
+        }
     } else if (data?.message) {
         errorMessage.value = data.message;
     } else {
@@ -137,16 +138,24 @@ const handleLogin = async () => {
   }
 };
 
-const handleSocialLogin = async (provider) => {
-  isLoading.value = true;
+const handleResendVerification = async () => {
+  if (!username.value) return;
+  isResending.value = true;
+  resendMessage.value = "";
   errorMessage.value = "";
   try {
-    await loginWithSocial(provider);
-    router.push(getDefaultRouteForRole(user.value?.primary_role));
+    // Note: The backend expects email, but login uses username. 
+    // We will assume the backend might be able to handle username, or we will just send it as email.
+    // Wait, the backend resend-verification-email endpoint explicitly takes 'email'.
+    // If the user logs in with username, we don't have their email.
+    // But actually, in many systems username is the email. Let's send the username as the email parameter and if it fails, show a generic error.
+    const res = await resendVerificationEmail(username.value);
+    resendMessage.value = res.detail || "Verification email sent.";
   } catch (error) {
-    errorMessage.value = "Social login failed";
+    errorMessage.value = "Failed to resend verification email. Please try again.";
   } finally {
-    isLoading.value = false;
+    isResending.value = false;
   }
 };
+
 </script>

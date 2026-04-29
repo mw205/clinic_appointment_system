@@ -139,6 +139,9 @@ FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://l
 FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://localhost:5173/verify-email')
 
 
+PASSWORD_RESET_TIMEOUT = 86400
+
+
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 

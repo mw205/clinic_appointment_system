@@ -14,6 +14,7 @@ def send_password_reset_email(user):
     token = default_token_generator.make_token(user)
 
     reset_link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?uid={uid}&token={token}"
+    print(reset_link)  # Debugging: Print the reset link to the console
 
     subject = "Reset your password"
     message = f"""
@@ -37,6 +38,7 @@ def send_verification_email(user):
     token = default_token_generator.make_token(user)
 
     verify_link = f"{settings.FRONTEND_VERIFY_EMAIL_URL}?uid={uid}&token={token}"
+    print(verify_link)  # Debugging: Print the verification link to the console
 
     subject = "Verify your email"
     message = f"""Hi {user.first_name},
