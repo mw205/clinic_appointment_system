@@ -11,7 +11,9 @@ from accounts.api.views import (
     PatientRegistrationView,
     RefreshTokenCookieView,
     CurrentDoctorProfileView,
-    UserViewSet
+    ResetPasswordView,
+    UserViewSet,
+    ForgotPasswordView
 )
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='users')
@@ -25,6 +27,8 @@ urlpatterns = [
     path('refresh/', RefreshTokenCookieView.as_view(), name='token_refresh'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('register/', PatientRegistrationView.as_view(), name='register'),
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
+    path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
 ]
 
 urlpatterns += router.urls

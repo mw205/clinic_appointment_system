@@ -10,10 +10,13 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
 
 
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer, ChangePasswordSerializer
+from accounts.api.serializers import LoginSerializer, ResetPasswordSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer, ChangePasswordSerializer, ForgotPasswordSerializer
 from accounts.rbac import is_patient, is_doctor, is_admin
 from accounts.models import DoctorProfile, PatientProfile, User
 from accounts.api.permissions import IsAdminOrReceptionist, IsAdminOnly
@@ -290,3 +293,47 @@ class UserViewSet(
         output_serializer = StaffUserSerializer(instance)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
 
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+
+        user = User.objects.filter(email=email, is_active=True).first()
+
+
+        reset_link = None
+
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+
+
+            reset_link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?uid={uid}&token={token}"
+
+        response_data = {
+            "detail": "If an account with that email exists, a password reset link has been sent."
+        }
+
+        if settings.DEBUG and reset_link:
+            response_data["reset_link"] = reset_link
+
+        return Response(response_data, status=status.HTTP_200_OK)
+    
+
+ 
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"detail": "Password has been reset successfully."},
+            status=status.HTTP_200_OK
+        )
