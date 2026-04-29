@@ -1,13 +1,13 @@
 <script setup>
+import DateTimeField from '@/components/scheduling/DateTimeField.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { createAppointment, normalizeApiError } from '@/services/appointmentService'
-import { getAvailableSlots, getSchedules } from '@/services/schedule_service'
+import { createAppointment, getAvailableSlots, normalizeApiError } from '@/services/appointmentService'
+import { getSchedules } from '@/services/schedule_service'
 import { CalendarDays } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -23,6 +23,7 @@ const slots = ref([])
 const loadingDoctors = ref(true)
 const loadingSlots = ref(false)
 const submitting = ref(false)
+const hasLoadedSlots = ref(false)
 const errorMessage = ref('')
 
 const canLoadSlots = computed(() => doctorId.value && selectedDate.value)
@@ -52,6 +53,7 @@ function formatSlot(value) {
 watch([doctorId, selectedDate], () => {
   selectedSlot.value = null
   slots.value = []
+  hasLoadedSlots.value = false
   errorMessage.value = ''
 })
 
@@ -85,10 +87,15 @@ async function loadSlots() {
   }
 
   loadingSlots.value = true
+  hasLoadedSlots.value = false
   errorMessage.value = ''
 
   try {
-    slots.value = await getAvailableSlots(doctorId.value, selectedDate.value)
+    slots.value = await getAvailableSlots({
+      doctor_id: doctorId.value,
+      date: selectedDate.value,
+    })
+    hasLoadedSlots.value = true
   } catch (error) {
     errorMessage.value = normalizeApiError(error, 'Unable to load available slots.')
   } finally {
@@ -112,6 +119,9 @@ async function submitBooking() {
     })
 
     toast.success('Appointment request sent.')
+    selectedSlot.value = null
+    slots.value = []
+    hasLoadedSlots.value = false
     router.push(`/patient/appointments/${appointment.id}`)
   } catch (error) {
     errorMessage.value = normalizeApiError(error, 'Unable to book this appointment.')
@@ -161,10 +171,13 @@ onMounted(loadDoctors)
             </p>
           </div>
 
-          <div class="space-y-2">
-            <Label for="appointment-date">Date</Label>
-            <Input id="appointment-date" v-model="selectedDate" type="date" />
-          </div>
+          <DateTimeField
+            label="Date"
+            :date-value="selectedDate"
+            :show-time="false"
+            required
+            @update:date-value="selectedDate = $event"
+          />
 
           <Button type="button" variant="outline" :disabled="!canLoadSlots || loadingSlots" @click="loadSlots">
             {{ loadingSlots ? 'Loading slots...' : 'Find Available Slots' }}
@@ -187,6 +200,10 @@ onMounted(loadDoctors)
               <p class="text-sm text-gray-500">Ends {{ formatSlot(slot.end_time) }}</p>
             </button>
           </div>
+
+          <p v-else-if="hasLoadedSlots" class="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
+            No available slots for this doctor on the selected date.
+          </p>
 
           <p v-else class="text-sm text-gray-500">
             Load slots to see available times for the selected date.

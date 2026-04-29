@@ -26,6 +26,7 @@ const errorMessage = ref('')
 const isHistory = computed(() => props.mode === 'history')
 const title = computed(() => isHistory.value ? 'Appointment History' : 'Upcoming Appointments')
 const emptyMessage = computed(() => isHistory.value ? 'No past appointments found.' : 'No upcoming appointments found.')
+const activeStatuses = ['requested', 'confirmed', 'checked_in']
 
 const visibleAppointments = computed(() => {
   const now = Date.now()
@@ -38,7 +39,7 @@ const visibleAppointments = computed(() => {
       return finalStatus || startsAt < now
     }
 
-    return !finalStatus && startsAt >= now
+    return activeStatuses.includes(appointment.status) && startsAt >= now
   })
 })
 
@@ -63,7 +64,11 @@ function statusVariant(status) {
 }
 
 function canCancel(appointment) {
-  return ['requested', 'confirmed'].includes(appointment.status)
+  return !isHistory.value && ['requested', 'confirmed'].includes(appointment.status)
+}
+
+function canReschedule(appointment) {
+  return !isHistory.value && ['requested', 'confirmed'].includes(appointment.status)
 }
 
 async function loadAppointments() {
@@ -71,10 +76,16 @@ async function loadAppointments() {
   errorMessage.value = ''
 
   try {
-    const data = await getAppointments({
+    const params = {
       ordering: isHistory.value ? '-start_time' : 'start_time',
       page_size: 50,
-    })
+    }
+
+    if (!isHistory.value) {
+      params.start_from = new Date().toISOString()
+    }
+
+    const data = await getAppointments(params)
     appointments.value = data.results ?? data
   } catch (error) {
     errorMessage.value = normalizeApiError(error, 'Unable to load appointments.')
@@ -134,7 +145,8 @@ onMounted(loadAppointments)
           <TableHeader>
             <TableRow>
               <TableHead>Doctor</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>Start Time</TableHead>
+              <TableHead>End Time</TableHead>
               <TableHead>Status</TableHead>
               <TableHead class="text-right">Actions</TableHead>
             </TableRow>
@@ -143,6 +155,7 @@ onMounted(loadAppointments)
             <TableRow v-for="appointment in visibleAppointments" :key="appointment.id">
               <TableCell>{{ appointment.doctor.name }}</TableCell>
               <TableCell>{{ formatDateTime(appointment.start_time) }}</TableCell>
+              <TableCell>{{ formatDateTime(appointment.end_time) }}</TableCell>
               <TableCell>
                 <Badge :variant="statusVariant(appointment.status)">
                   {{ appointment.status }}
@@ -152,6 +165,9 @@ onMounted(loadAppointments)
                 <div class="flex justify-end gap-2">
                   <Button as-child size="sm" variant="outline">
                     <RouterLink :to="`/patient/appointments/${appointment.id}`">Details</RouterLink>
+                  </Button>
+                  <Button v-if="canReschedule(appointment)" as-child size="sm" variant="outline">
+                    <RouterLink :to="`/patient/appointments/${appointment.id}`">Reschedule</RouterLink>
                   </Button>
                   <Button
                     v-if="canCancel(appointment)"
