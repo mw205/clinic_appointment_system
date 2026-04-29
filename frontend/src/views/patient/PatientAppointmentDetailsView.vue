@@ -37,8 +37,10 @@ const history = computed(() =>
   || []
 )
 
+const finalStatuses = ['cancelled', 'completed', 'no_show']
+
 const canCancel = computed(() =>
-  ['requested', 'confirmed'].includes(appointment.value?.status)
+  appointment.value?.status && !finalStatuses.includes(appointment.value.status)
 )
 
 const canReschedule = computed(() =>
@@ -90,6 +92,11 @@ async function loadAppointment() {
 }
 
 async function handleCancel() {
+  const confirmed = window.confirm('Cancel this appointment?')
+  if (!confirmed) {
+    return
+  }
+
   cancelling.value = true
   errorMessage.value = ''
 

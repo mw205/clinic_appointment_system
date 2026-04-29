@@ -27,6 +27,7 @@ const isHistory = computed(() => props.mode === 'history')
 const title = computed(() => isHistory.value ? 'Appointment History' : 'Upcoming Appointments')
 const emptyMessage = computed(() => isHistory.value ? 'No past appointments found.' : 'No upcoming appointments found.')
 const activeStatuses = ['requested', 'confirmed', 'checked_in']
+const finalStatuses = ['cancelled', 'completed', 'no_show']
 
 const visibleAppointments = computed(() => {
   const now = Date.now()
@@ -64,7 +65,7 @@ function statusVariant(status) {
 }
 
 function canCancel(appointment) {
-  return !isHistory.value && ['requested', 'confirmed'].includes(appointment.status)
+  return !isHistory.value && !finalStatuses.includes(appointment.status)
 }
 
 function canReschedule(appointment) {
@@ -95,13 +96,20 @@ async function loadAppointments() {
 }
 
 async function handleCancel(appointment) {
+  const confirmed = window.confirm('Cancel this appointment?')
+  if (!confirmed) {
+    return
+  }
+
   actionId.value = appointment.id
   errorMessage.value = ''
 
   try {
-    await cancelAppointment(appointment.id)
+    const updatedAppointment = await cancelAppointment(appointment.id)
+    appointments.value = appointments.value.map((item) =>
+      item.id === appointment.id ? updatedAppointment : item
+    )
     toast.success('Appointment cancelled.')
-    await loadAppointments()
   } catch (error) {
     errorMessage.value = normalizeApiError(error, 'Unable to cancel this appointment.')
   } finally {
