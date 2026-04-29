@@ -1,15 +1,18 @@
 export const API_ENDPOINTS = {
   SCHEDULING: {
-    BASE: '/scheduling',
-    SCHEDULES: '/scheduling/schedules/',
-    EXCEPTIONS: '/scheduling/exceptions/',
-    AVAILABLE_SLOTS: '/scheduling/schedules/available/',
+    BASE: 'scheduling/',
+    SCHEDULES: 'schedules/',
+    EXCEPTIONS: 'exceptions/',
+    AVAILABLE_SLOTS: 'available/',
   },
   ACCOUNTS: {
-    BASE: '/accounts',
-    USERS: '/users/',
+    BASE: 'accounts/',
+    USERS: 'users/',
+    ME: 'me/',
+    DOCTOR_PROFILE: 'doctor-profile/',
+    PATIENT_PROFILE: 'patient-profile/',
   },
   APPOINTMENTS: {
-    BASE: '/appointments/',
+    BASE: 'appointments/',
   },
 }
