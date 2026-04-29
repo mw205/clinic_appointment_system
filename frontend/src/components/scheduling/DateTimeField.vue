@@ -31,6 +31,10 @@ const props = defineProps({
     type: String,
     default: 'Select time',
   },
+  showTime: {
+    type: Boolean,
+    default: true,
+  },
   disabled: {
     type: Boolean,
     default: false,
@@ -96,7 +100,7 @@ const handleTimeInput = (value) => {
       <span v-if="required" class="text-destructive">*</span>
     </Label>
 
-    <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem]">
+    <div :class="showTime ? 'grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem]' : ''">
       <Popover v-model:open="popoverOpen">
         <PopoverTrigger as-child>
           <Button
@@ -121,6 +125,7 @@ const handleTimeInput = (value) => {
       </Popover>
 
       <Input
+        v-if="showTime"
         :model-value="timeValue"
         type="time"
         :disabled="disabled"

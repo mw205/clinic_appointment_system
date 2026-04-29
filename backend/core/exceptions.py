@@ -15,6 +15,36 @@ from rest_framework.exceptions import (
 )
 
 
+def normalize_exception_detail(detail):
+    if isinstance(detail, dict):
+        return {
+            key: normalize_exception_detail(value)
+            for key, value in detail.items()
+        }
+
+    if isinstance(detail, list):
+        return [normalize_exception_detail(value) for value in detail]
+
+    return str(detail)
+
+
+def get_exception_message(exc):
+    detail = normalize_exception_detail(getattr(exc, "detail", None))
+
+    if isinstance(detail, dict):
+        return (
+            detail.get("message")
+            or detail.get("detail")
+            or detail.get("error")
+            or getattr(exc, "default_detail", "Something went wrong.")
+        )
+
+    if isinstance(detail, list):
+        return ", ".join(detail)
+
+    return detail or getattr(exc, "default_detail", "Something went wrong.")
+
+
 def map_exception(exc):
     if isinstance(exc, (ValidationError, DjangoValidationError)):
         return "validation_error", "Invalid input."
@@ -38,7 +68,7 @@ def map_exception(exc):
         return "throttled", "Too many requests."
 
     if isinstance(exc, APIException):
-        return getattr(exc, "default_code", "api_error"), str(exc.detail)
+        return getattr(exc, "default_code", "api_error"), get_exception_message(exc)
 
     return "server_error", "Something went wrong."
 
@@ -58,7 +88,7 @@ def custom_exception_handler(exc, context):
 
     details = None
     if isinstance(exc, (ValidationError, DjangoValidationError)):
-        details = response.data
+        details = normalize_exception_detail(response.data)
 
     data = {
         "code": code,

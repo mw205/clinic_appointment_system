@@ -40,10 +40,22 @@ const NAV_ITEMS = [
     roles: ["Patient", "Doctor", "Receptionist"],
   },
   {
+    label: "Book Appointment",
+    icon: Calendar,
+    path: "book",
+    roles: ["Patient"],
+  },
+  {
+    label: "History",
+    icon: FileText,
+    path: "history",
+    roles: ["Patient"],
+  },
+  {
     label: "Medical Records",
     icon: FileText,
     path: "records",
-    roles: ["Patient", "Doctor"],
+    roles: ["Doctor"],
   },
   {
     label: "Queue Management",
@@ -65,9 +77,18 @@ const route = useRoute();
 const { user, logout } = useAuth();
 const sidebarOpen = ref(false);
 const userInitials = computed(() => {
-  if (user.value) {
-    return `${user.value.first_name[0]}${user.value.last_name[0]}`
-  } return ''
+  if (!user.value) return ''
+
+  const names = [user.value.first_name, user.value.last_name]
+    .filter(Boolean)
+    .map((name) => name.trim()[0])
+    .filter(Boolean)
+
+  if (names.length) {
+    return names.join('').slice(0, 2).toUpperCase()
+  }
+
+  return user.value.username?.slice(0, 2).toUpperCase() || 'U'
 });
 
 const handleLogout = () => {
@@ -138,7 +159,7 @@ const handleNavigate = (path) => {
         <div class="p-4 border-t border-gray-200">
           <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
             <Avatar class="h-9 w-9">
-              <AvatarFallback class="bg-blue-600 text-white text-sm">
+              <AvatarFallback class="flex h-full w-full items-center justify-center bg-blue-600 text-xs font-semibold uppercase leading-none text-white">
                 {{ userInitials }}
               </AvatarFallback>
             </Avatar>
@@ -177,7 +198,7 @@ const handleNavigate = (path) => {
               <DropdownMenuTrigger as-child>
                 <Button variant="ghost" class="gap-2">
                   <Avatar class="h-8 w-8">
-                    <AvatarFallback class="bg-blue-600 text-white text-xs">
+                    <AvatarFallback class="flex h-full w-full items-center justify-center bg-blue-600 text-xs font-semibold uppercase leading-none text-white">
                       {{ userInitials }}
                     </AvatarFallback>
                   </Avatar>
