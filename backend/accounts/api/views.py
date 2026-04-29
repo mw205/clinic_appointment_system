@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -16,11 +18,13 @@ from django.utils.encoding import force_bytes
 
 
 
-from accounts.api.serializers import LoginSerializer, ResetPasswordSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer, ChangePasswordSerializer, ForgotPasswordSerializer
+from accounts.api.serializers import LoginSerializer, ResetPasswordSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, VerifyEmailSerializer, ResendVerificationEmailSerializer
 from accounts.rbac import is_patient, is_doctor, is_admin
 from accounts.models import DoctorProfile, PatientProfile, User
 from accounts.api.permissions import IsAdminOrReceptionist, IsAdminOnly
+from accounts.services.auth_email import send_password_reset_email, send_verification_email
 
+logger = logging.getLogger(__name__)
 
 def set_refresh_cookie(response, refresh_token):
     response.set_cookie(
@@ -149,21 +153,13 @@ class PatientRegistrationView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.save()
-
-        refresh = RefreshToken.for_user(user)
-        refresh_token = str(refresh)
-        access_token = str(refresh.access_token)
-
-        user_data = UserSummarySerializer(user).data
-
-        response = Response({
-            'access': access_token,
-            'user': user_data
-        },
-        status=status.HTTP_201_CREATED
+        send_verification_email(user)
+        return Response(
+            {
+                "detail": "Registration successful. Please verify your email, then log in."
+            },
+            status=status.HTTP_201_CREATED,
         )
-        set_refresh_cookie(response, refresh_token)
-        return response
 
 
 class RefreshTokenCookieView(APIView):
@@ -305,21 +301,13 @@ class ForgotPasswordView(APIView):
         user = User.objects.filter(email=email, is_active=True).first()
 
 
-        reset_link = None
-
         if user:
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
+            send_password_reset_email(user)
 
-
-            reset_link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?uid={uid}&token={token}"
 
         response_data = {
             "detail": "If an account with that email exists, a password reset link has been sent."
         }
-
-        if settings.DEBUG and reset_link:
-            response_data["reset_link"] = reset_link
 
         return Response(response_data, status=status.HTTP_200_OK)
     
@@ -336,4 +324,42 @@ class ResetPasswordView(APIView):
         return Response(
             {"detail": "Password has been reset successfully."},
             status=status.HTTP_200_OK
+        )
+    
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"detail": "Email has been verified successfully."},
+            status=status.HTTP_200_OK
+        )
+    
+class ResendVerificationEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResendVerificationEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        user = User.objects.filter(
+            email=email,
+            is_active=True,
+            email_verified=False,
+        ).first()
+
+        if user:
+            send_verification_email(user)
+
+        return Response(
+            {
+                "detail": "If an unverified account with that email exists, a verification email has been sent."
+            },
+            status=status.HTTP_200_OK,
         )

@@ -87,6 +87,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "email_verified",
             "primary_role",
             "groups"
         ]
@@ -117,6 +118,11 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_active:
             raise serializers.ValidationError(
                 'User account is inactive.')
+
+        if not user.email_verified:
+            raise serializers.ValidationError(
+                'Please verify your email address before logging in.'
+            )
         
         attrs['user'] = user
         return attrs
@@ -135,6 +141,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
+            "email_verified",
             "primary_role",
             "groups"
         ]
@@ -618,3 +625,39 @@ class ResetPasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data["new_password"])
         user.save(update_fields=["password"])
         return user
+    
+
+class VerifyEmailSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+
+        try:
+            user_id = urlsafe_base64_decode(attrs["uid"]).decode()
+            user = User.objects.get(pk=user_id, is_active=True)
+            
+        except Exception:
+            raise serializers.ValidationError("Invalid link")
+
+        if not default_token_generator.check_token(user, attrs["token"]):
+            raise serializers.ValidationError("Invalid or expired token")
+
+        if user.email_verified:
+            raise serializers.ValidationError("Email is already verified.")
+
+        attrs["user"] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data["user"]
+        user.email_verified = True
+        user.save(update_fields=["email_verified"])
+        return user
+
+
+class ResendVerificationEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.strip().lower()

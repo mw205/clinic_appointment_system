@@ -76,6 +76,8 @@ class AccountsAPITests(APITestCase):
             phone_number="+201234567891",
         )
         user.groups.add(self.patient_group)
+        user.email_verified = True
+        user.save(update_fields=["email_verified"])
         PatientProfile.objects.create(
             user=user,
             date_of_birth="1995-01-01",
@@ -84,7 +86,7 @@ class AccountsAPITests(APITestCase):
         )
         return user
 
-    def test_register_creates_patient_profile_assigns_group_and_returns_tokens(self):
+    def test_register_creates_patient_profile_assigns_group_and_requires_verification_before_login(self):
         payload = {
             "username": "new_patient",
             "email": "new_patient@example.com",
@@ -101,13 +103,14 @@ class AccountsAPITests(APITestCase):
         response = self.client.post(self.register_url, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn("access", response.data)
-        self.assertNotIn("refresh", response.data)
-        self.assertEqual(response.data["user"]["primary_role"], PATIENT)
-        self.assertIn(settings.AUTH_REFRESH_COOKIE_NAME, response.cookies)
+        self.assertEqual(
+            response.data["detail"],
+            "Registration successful. Please verify your email, then log in.",
+        )
         created_user = User.objects.get(username="new_patient")
         self.assertTrue(created_user.groups.filter(name=PATIENT).exists())
         self.assertTrue(PatientProfile.objects.filter(user=created_user).exists())
+        self.assertFalse(created_user.email_verified)
 
     def test_register_rejects_duplicate_email(self):
         self.create_patient_user(email="duplicate@example.com")
@@ -144,6 +147,30 @@ class AccountsAPITests(APITestCase):
         self.assertEqual(response.data["user"]["primary_role"], PATIENT)
         self.assertEqual(response.data["user"]["groups"], [PATIENT])
         self.assertIn(settings.AUTH_REFRESH_COOKIE_NAME, response.cookies)
+
+    def test_login_rejects_unverified_user(self):
+        user = User.objects.create_user(
+            username="unverified_patient",
+            password="StrongPass123!",
+            email="unverified@example.com",
+            phone_number="+201234567899",
+        )
+        user.groups.add(self.patient_group)
+
+        response = self.client.post(
+            self.login_url,
+            {
+                "username": "unverified_patient",
+                "password": "StrongPass123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["details"]["non_field_errors"][0],
+            "Please verify your email address before logging in.",
+        )
 
     def test_me_requires_authentication(self):
         response = self.client.get(self.me_url)

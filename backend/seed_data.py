@@ -51,7 +51,8 @@ def create_users(user_type, count):
             first_name=first_name,
             last_name=last_name,
             email=fake.email(),
-            phone_number=fake.phone_number()[:15]
+            phone_number=fake.phone_number()[:15],
+            email_verified=True,
         )
         user.groups.add(group)
         users.append(user)
