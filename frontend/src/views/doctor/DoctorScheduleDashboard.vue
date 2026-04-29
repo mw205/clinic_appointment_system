@@ -189,21 +189,6 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto flex max-w-6xl flex-col gap-6">
-    <Card>
-      <CardHeader>
-        <CardTitle>Doctor Schedule Dashboard</CardTitle>
-        <CardDescription>
-          Manage your recurring weekly schedule, one-off availability changes, and bookable slots.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-          <p class="font-medium text-foreground">{{ doctorName }}</p>
-          <p>Use the weekly schedule tab to define your standard working hours.</p>
-        </div>
-      </CardContent>
-    </Card>
-
     <Tabs default-value="weekly-schedule">
       <TabsList>
         <TabsTrigger value="weekly-schedule">Weekly Schedule</TabsTrigger>
