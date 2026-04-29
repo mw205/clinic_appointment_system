@@ -37,8 +37,44 @@ const getUserRole = () => {
   return user.value?.primary_role
 }
 
+const resetRoleProfiles = () => {
+  doctorProfile.value = null
+  patientProfile.value = null
+}
+
 export const useAuth = () => {
   const isAuthenticated = computed(() => !!user.value)
+
+  const getCurrentUserProfile = async () => {
+    if (!user.value?.primary_role) {
+      resetRoleProfiles()
+      return null
+    }
+
+    resetRoleProfiles()
+
+    if (user.value.primary_role === 'Doctor') {
+      const response = await api.get(
+        API_ENDPOINTS.ACCOUNTS.BASE +
+          API_ENDPOINTS.ACCOUNTS.ME +
+          API_ENDPOINTS.ACCOUNTS.DOCTOR_PROFILE,
+      )
+      doctorProfile.value = response.data
+      return doctorProfile.value
+    }
+
+    if (user.value.primary_role === 'Patient') {
+      const response = await api.get(
+        API_ENDPOINTS.ACCOUNTS.BASE +
+          API_ENDPOINTS.ACCOUNTS.ME +
+          API_ENDPOINTS.ACCOUNTS.PATIENT_PROFILE,
+      )
+      patientProfile.value = response.data
+      return patientProfile.value
+    }
+
+    return null
+  }
 
   const checkSession = async () => {
     isLoading.value = true
@@ -53,10 +89,12 @@ export const useAuth = () => {
       const newAccessToken = response.data.access || response.data.access_token || response.data
       setAccessToken(newAccessToken)
 
-      const userRes = await api.get('/accounts/me/')
+      const userRes = await api.get(API_ENDPOINTS.ACCOUNTS.BASE + API_ENDPOINTS.ACCOUNTS.ME)
       user.value = userRes.data
+      await getCurrentUserProfile()
     } catch {
       user.value = null
+      resetRoleProfiles()
       setAccessToken(null)
     } finally {
       isInitialized.value = true
@@ -72,8 +110,9 @@ export const useAuth = () => {
       const newAccessToken = response.data.access || response.data.access_token || response.data
       setAccessToken(newAccessToken)
 
-      const userRes = await api.get('/accounts/me/')
+      const userRes = await api.get(API_ENDPOINTS.ACCOUNTS.BASE + API_ENDPOINTS.ACCOUNTS.ME)
       user.value = userRes.data
+      await getCurrentUserProfile()
       return user.value
     } finally {
       isLoading.value = false
@@ -87,8 +126,9 @@ export const useAuth = () => {
       const newAccessToken = response.data.access || response.data.access_token || response.data
       setAccessToken(newAccessToken)
 
-      const userRes = await api.get('/accounts/me/')
+      const userRes = await api.get(API_ENDPOINTS.ACCOUNTS.BASE + API_ENDPOINTS.ACCOUNTS.ME)
       user.value = userRes.data
+      await getCurrentUserProfile()
       return user.value
     } finally {
       isLoading.value = false
@@ -103,9 +143,7 @@ export const useAuth = () => {
     } finally {
       setAccessToken(null)
       user.value = null
-      patientProfile.value = null
-      doctorProfile.value = null
-      activeProfileId.value = null
+      resetRoleProfiles()
       clearAuthQueue()
       window.location.href = '/login'
     }
@@ -113,21 +151,6 @@ export const useAuth = () => {
 
   const loginWithSocial = () => {
     console.warn('Social login not implemented.')
-  }
-
-  const getCurrentUserProfile = async () => {
-    if (user.value.primary_role == 'Doctor') {
-      const response = await api.get(
-        API_ENDPOINTS.ACCOUNTS.BASE + API_ENDPOINTS.ACCOUNTS.DOCTOR_PROFILE,
-      )
-      doctorProfile.value = response.data
-    } else if (user.value.primary_role == 'Patient') {
-      const response = await api.get(
-        API_ENDPOINTS.ACCOUNTS.BASE + API_ENDPOINTS.ACCOUNTS.PATIENT_PROFILE,
-      )
-      patientProfile.value = response.data
-    }
-    return null
   }
 
   return {

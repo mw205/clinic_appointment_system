@@ -75,7 +75,7 @@ import { Label } from "@/components/ui/label";
 import { Activity, Chrome, Facebook } from "lucide-vue-next";
 
 const router = useRouter();
-const { login, loginWithSocial, user, getCurrentUserProfile } = useAuth();
+const { login, loginWithSocial, user } = useAuth();
 
 const username = ref("");
 const password = ref("");
@@ -87,7 +87,6 @@ const handleLogin = async () => {
   errorMessage.value = "";
   try {
     await login(username.value, password.value);
-    await getCurrentUserProfile();
     router.push(getDefaultRouteForRole(user.value?.primary_role));
   } catch (error) {
     const data = error.response?.data;
