@@ -30,7 +30,7 @@ export function usePatientDashboard() {
     try {
       const data = await getAppointments({
         ordering: "start_time",
-        page_size: 50,
+        page_size: 10,
       });
 
       appointments.value = data.results ?? data;
