@@ -41,6 +41,14 @@ const history = computed(() =>
   || []
 )
 
+const patientName = computed(() => {
+  if (!appointment.value?.patient) {
+    return ''
+  }
+
+  return appointment.value.patient.name || appointment.value.patient.user?.username || ''
+})
+
 const finalStatuses = ['cancelled', 'completed', 'no_show']
 
 const canCancel = computed(() =>
@@ -58,6 +66,10 @@ const canSubmitReschedule = computed(() =>
 )
 
 function formatDateTime(value) {
+  if (!value) {
+    return 'Not available'
+  }
+
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -65,6 +77,10 @@ function formatDateTime(value) {
 }
 
 function formatSlot(value) {
+  if (!value) {
+    return 'Not available'
+  }
+
   return new Intl.DateTimeFormat(undefined, {
     hour: 'numeric',
     minute: '2-digit',
@@ -215,6 +231,18 @@ onMounted(loadAppointment)
         </CardHeader>
         <CardContent class="grid gap-4 text-sm md:grid-cols-2">
           <div>
+            <p class="text-xs font-medium uppercase text-gray-500">Appointment ID</p>
+            <p class="font-medium text-gray-900">#{{ appointment.id }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-medium uppercase text-gray-500">Doctor</p>
+            <p class="font-medium text-gray-900">{{ appointment.doctor.name }}</p>
+          </div>
+          <div v-if="patientName">
+            <p class="text-xs font-medium uppercase text-gray-500">Patient</p>
+            <p class="font-medium text-gray-900">{{ patientName }}</p>
+          </div>
+          <div>
             <p class="text-xs font-medium uppercase text-gray-500">Start</p>
             <p class="font-medium text-gray-900">{{ formatDateTime(appointment.start_time) }}</p>
           </div>
@@ -223,12 +251,8 @@ onMounted(loadAppointment)
             <p class="font-medium text-gray-900">{{ formatDateTime(appointment.end_time) }}</p>
           </div>
           <div>
-            <p class="text-xs font-medium uppercase text-gray-500">Doctor</p>
-            <p class="font-medium text-gray-900">{{ appointment.doctor.name }}</p>
-          </div>
-          <div>
-            <p class="text-xs font-medium uppercase text-gray-500">Appointment ID</p>
-            <p class="font-medium text-gray-900">#{{ appointment.id }}</p>
+            <p class="text-xs font-medium uppercase text-gray-500">Created</p>
+            <p class="font-medium text-gray-900">{{ formatDateTime(appointment.created_at) }}</p>
           </div>
         </CardContent>
       </Card>
@@ -296,26 +320,36 @@ onMounted(loadAppointment)
         </CardContent>
       </Card>
 
-      <Card>
+      <Card v-if="history.length">
         <CardHeader>
           <CardTitle>Reschedule History</CardTitle>
         </CardHeader>
         <CardContent>
-          <div v-if="history.length" class="space-y-3">
-            <div v-for="entry in history" :key="entry.id || entry.timestamp" class="rounded-lg border p-4">
+          <div class="space-y-4 border-l border-gray-200 pl-4">
+            <div v-for="entry in history" :key="entry.id || entry.timestamp" class="relative">
+              <span class="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-blue-600" />
               <p class="font-medium text-gray-900">
-                {{ formatDateTime(entry.old_start_time) }} to {{ formatDateTime(entry.new_start_time) }}
+                {{ formatDateTime(entry.old_start_time) }} -> {{ formatDateTime(entry.new_start_time) }}
               </p>
-              <p class="mt-1 text-sm text-gray-500">
-                {{ entry.reason || 'No reason provided.' }}
+              <p v-if="entry.changed_by" class="mt-1 text-sm text-gray-600">
+                Changed by {{ entry.changed_by }}
+              </p>
+              <p v-if="entry.reason" class="mt-1 text-sm text-gray-600">
+                Reason: {{ entry.reason }}
+              </p>
+              <p v-if="entry.timestamp" class="mt-1 text-xs text-gray-500">
+                {{ formatDateTime(entry.timestamp) }}
               </p>
             </div>
           </div>
-          <p v-else class="text-sm text-gray-500">
-            No reschedule history recorded for this appointment.
-          </p>
         </CardContent>
       </Card>
     </template>
+
+    <Card v-else>
+      <CardContent class="px-6 py-10 text-center text-sm text-gray-500">
+        Appointment not found.
+      </CardContent>
+    </Card>
   </div>
 </template>
