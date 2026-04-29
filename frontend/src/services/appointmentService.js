@@ -42,7 +42,7 @@ export const getAppointment = async (id) => {
   return response.data
 }
 
-export const bookAppointment = async (payload) => {
+export const createAppointment = async (payload) => {
   const response = await api.post(API_ENDPOINTS.APPOINTMENTS.BASE, payload)
   return response.data
 }
@@ -54,5 +54,10 @@ export const cancelAppointment = async (id) => {
 
 export const rescheduleAppointment = async (id, payload) => {
   const response = await api.post(appointmentActionUrl(id, 'reschedule'), payload)
+  return response.data
+}
+
+export const getAvailableSlots = async (params = {}) => {
+  const response = await api.get(API_ENDPOINTS.SCHEDULING.AVAILABLE_SLOTS, { params })
   return response.data
 }

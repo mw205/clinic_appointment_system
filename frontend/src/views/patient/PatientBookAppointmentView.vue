@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { bookAppointment, normalizeApiError } from '@/services/appointmentService'
+import { createAppointment, normalizeApiError } from '@/services/appointmentService'
 import { getAvailableSlots, getSchedules } from '@/services/schedule_service'
 import { CalendarDays } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -106,7 +106,7 @@ async function submitBooking() {
   errorMessage.value = ''
 
   try {
-    const appointment = await bookAppointment({
+    const appointment = await createAppointment({
       doctor_id: doctorId.value,
       start_time: selectedSlot.value.start_time,
     })
