@@ -58,7 +58,7 @@ const normalizeErrorValue = (value) => {
   return String(value)
 }
 
-export const normalizeApiError = (error, fallback = 'Something went wrong. Please try again.') => {
+export const getApiErrorMessage = (error, fallback = 'Something went wrong. Please try again.') => {
   const data = error.response?.data
 
   if (!data) {

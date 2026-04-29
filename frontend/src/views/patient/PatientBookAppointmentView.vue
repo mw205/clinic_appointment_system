@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { createAppointment, getAvailableSlots, normalizeApiError } from '@/services/appointmentService'
+import { createAppointment, getApiErrorMessage, getAvailableSlots } from '@/services/appointmentService'
 import { getSchedules } from '@/services/schedule_service'
 import { CalendarDays } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -74,7 +74,7 @@ async function loadDoctors() {
 
     doctors.value = [...uniqueDoctors.values()]
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to load doctors.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to load doctors.')
   } finally {
     loadingDoctors.value = false
   }
@@ -97,7 +97,7 @@ async function loadSlots() {
     })
     hasLoadedSlots.value = true
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to load available slots.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to load available slots.')
   } finally {
     loadingSlots.value = false
   }
@@ -124,7 +124,7 @@ async function submitBooking() {
     hasLoadedSlots.value = false
     router.push(`/patient/appointments/${appointment.id}`)
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to book this appointment.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to book this appointment.')
   } finally {
     submitting.value = false
   }

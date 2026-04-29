@@ -9,9 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import {
   cancelAppointment,
+  getApiErrorMessage,
   getAvailableSlots,
   getAppointment,
-  normalizeApiError,
   rescheduleAppointment,
 } from '@/services/appointmentService'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -120,7 +120,7 @@ async function loadAppointment() {
     appointment.value = await getAppointment(appointmentId.value)
     syncFormFromAppointment()
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to load appointment details.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to load appointment details.')
   } finally {
     loading.value = false
   }
@@ -144,7 +144,7 @@ async function loadSlots() {
     })
     hasLoadedSlots.value = true
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to load available slots.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to load available slots.')
   } finally {
     loadingSlots.value = false
   }
@@ -163,7 +163,7 @@ async function handleCancel() {
     appointment.value = await cancelAppointment(appointmentId.value)
     toast.success('Appointment cancelled.')
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to cancel this appointment.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to cancel this appointment.')
   } finally {
     cancelling.value = false
   }
@@ -187,7 +187,7 @@ async function handleReschedule() {
     form.reason = ''
     toast.success('Appointment rescheduled.')
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to reschedule this appointment.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to reschedule this appointment.')
   } finally {
     rescheduling.value = false
   }

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { cancelAppointment, getAppointments, normalizeApiError } from '@/services/appointmentService'
+import { cancelAppointment, getApiErrorMessage, getAppointments } from '@/services/appointmentService'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -89,7 +89,7 @@ async function loadAppointments() {
     const data = await getAppointments(params)
     appointments.value = data.results ?? data
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to load appointments.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to load appointments.')
   } finally {
     loading.value = false
   }
@@ -111,7 +111,7 @@ async function handleCancel(appointment) {
     )
     toast.success('Appointment cancelled.')
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, 'Unable to cancel this appointment.')
+    errorMessage.value = getApiErrorMessage(error, 'Unable to cancel this appointment.')
   } finally {
     actionId.value = null
   }

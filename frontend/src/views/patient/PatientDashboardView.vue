@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAppointments, normalizeApiError } from "@/services/appointmentService";
+import { getApiErrorMessage, getAppointments } from "@/services/appointmentService";
 import { CalendarCheck, CalendarClock, ClipboardList, Stethoscope } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
@@ -79,7 +79,7 @@ async function loadAppointments() {
 
     appointments.value = data.results ?? data;
   } catch (error) {
-    errorMessage.value = normalizeApiError(error, "Unable to load appointments.");
+    errorMessage.value = getApiErrorMessage(error, "Unable to load appointments.");
   } finally {
     loading.value = false;
   }
