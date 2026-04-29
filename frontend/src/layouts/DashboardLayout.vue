@@ -40,10 +40,22 @@ const NAV_ITEMS = [
     roles: ["Patient", "Doctor", "Receptionist"],
   },
   {
+    label: "Book Appointment",
+    icon: Calendar,
+    path: "book",
+    roles: ["Patient"],
+  },
+  {
+    label: "History",
+    icon: FileText,
+    path: "history",
+    roles: ["Patient"],
+  },
+  {
     label: "Medical Records",
     icon: FileText,
     path: "records",
-    roles: ["Patient", "Doctor"],
+    roles: ["Doctor"],
   },
   {
     label: "Queue Management",

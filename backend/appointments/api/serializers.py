@@ -6,13 +6,32 @@ from accounts.api.serializers import (
     PatientProfileModelSerializer,
 )
 from accounts.models import DoctorProfile, User
-from appointments.models import Appointment
+from appointments.models import Appointment, RescheduleHistory
 from accounts.rbac import PATIENT, is_doctor, is_patient
+
+
+class RescheduleHistorySerializer(serializers.ModelSerializer):
+    changed_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RescheduleHistory
+        fields = [
+            "id",
+            "old_start_time",
+            "new_start_time",
+            "reason",
+            "timestamp",
+            "changed_by",
+        ]
+
+    def get_changed_by(self, obj):
+        return obj.changed_by.get_full_name() or obj.changed_by.username
 
 
 class AppointmentReadSerializer(serializers.ModelSerializer):
     patient = serializers.SerializerMethodField()
     doctor = serializers.SerializerMethodField()
+    reschedule_history = RescheduleHistorySerializer(many=True, read_only=True)
 
     class Meta:
         model = Appointment
@@ -24,6 +43,7 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
             "end_time",
             "status",
             "created_at",
+            "reschedule_history",
         ]
 
     def get_patient(self, obj):

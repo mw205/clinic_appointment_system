@@ -9,4 +9,7 @@ export const API_ENDPOINTS = {
     BASE: '/accounts',
     USERS: '/users/',
   },
+  APPOINTMENTS: {
+    BASE: '/appointments/',
+  },
 }

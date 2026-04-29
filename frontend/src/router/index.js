@@ -43,10 +43,42 @@ const router = createRouter({
           component: () => import('@/views/receptionist/ReceptionistScheduleDashboard.vue'),
         },
         {
+          path: '/patient/dashboard',
+          name: 'PatientDashboard',
+          component: () => import('@/views/patient/PatientDashboardView.vue'),
+          meta: { requiresAuth: true, role: 'Patient' },
+        },
+        {
+          path: '/patient/appointments',
+          name: 'PatientAppointments',
+          component: () => import('@/views/patient/PatientAppointmentsView.vue'),
+          props: { mode: 'upcoming' },
+          meta: { requiresAuth: true, role: 'Patient' },
+        },
+        {
+          path: '/patient/book',
+          name: 'PatientBookAppointment',
+          component: () => import('@/views/patient/PatientBookAppointmentView.vue'),
+          meta: { requiresAuth: true, role: 'Patient' },
+        },
+        {
+          path: '/patient/history',
+          name: 'PatientAppointmentHistory',
+          component: () => import('@/views/patient/PatientAppointmentsView.vue'),
+          props: { mode: 'history' },
+          meta: { requiresAuth: true, role: 'Patient' },
+        },
+        {
+          path: '/patient/appointments/:id',
+          name: 'PatientAppointmentDetails',
+          component: () => import('@/views/patient/PatientAppointmentDetailsView.vue'),
+          meta: { requiresAuth: true, role: 'Patient' },
+        },
+        {
           path: '/patient/consultations/:id/summary',
           name: 'ConsultationSummary',
           component: () => import('@/views/patient/ConsultationSummaryView.vue'),
-          meta: { requiresAuth: true, role: 'patient' },
+          meta: { requiresAuth: true, role: 'Patient' },
         },
         {
           path: '/admin/dashboard',
