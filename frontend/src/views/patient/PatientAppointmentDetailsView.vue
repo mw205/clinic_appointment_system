@@ -1,14 +1,15 @@
 <script setup>
+import DateTimeField from '@/components/scheduling/DateTimeField.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import {
   cancelAppointment,
+  getAvailableSlots,
   getAppointment,
   normalizeApiError,
   rescheduleAppointment,
@@ -24,10 +25,13 @@ const appointment = ref(null)
 const loading = ref(true)
 const cancelling = ref(false)
 const rescheduling = ref(false)
+const loadingSlots = ref(false)
+const hasLoadedSlots = ref(false)
+const slots = ref([])
+const selectedSlot = ref(null)
 const errorMessage = ref('')
 const form = reactive({
   date: '',
-  time: '',
   reason: '',
 })
 
@@ -47,10 +51,23 @@ const canReschedule = computed(() =>
   ['requested', 'confirmed'].includes(appointment.value?.status)
 )
 
+const canLoadSlots = computed(() => appointment.value?.doctor?.id && form.date)
+
+const canSubmitReschedule = computed(() =>
+  selectedSlot.value && !rescheduling.value && !cancelling.value
+)
+
 function formatDateTime(value) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
+  }).format(new Date(value))
+}
+
+function formatSlot(value) {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
   }).format(new Date(value))
 }
 
@@ -74,7 +91,9 @@ function syncFormFromAppointment() {
 
   const startsAt = new Date(appointment.value.start_time)
   form.date = startsAt.toISOString().slice(0, 10)
-  form.time = startsAt.toTimeString().slice(0, 5)
+  selectedSlot.value = null
+  slots.value = []
+  hasLoadedSlots.value = false
 }
 
 async function loadAppointment() {
@@ -88,6 +107,30 @@ async function loadAppointment() {
     errorMessage.value = normalizeApiError(error, 'Unable to load appointment details.')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadSlots() {
+  if (!canLoadSlots.value) {
+    errorMessage.value = 'Choose a date first.'
+    return
+  }
+
+  loadingSlots.value = true
+  hasLoadedSlots.value = false
+  selectedSlot.value = null
+  errorMessage.value = ''
+
+  try {
+    slots.value = await getAvailableSlots({
+      doctor_id: appointment.value.doctor.id,
+      date: form.date,
+    })
+    hasLoadedSlots.value = true
+  } catch (error) {
+    errorMessage.value = normalizeApiError(error, 'Unable to load available slots.')
+  } finally {
+    loadingSlots.value = false
   }
 }
 
@@ -111,8 +154,8 @@ async function handleCancel() {
 }
 
 async function handleReschedule() {
-  if (!form.date || !form.time) {
-    errorMessage.value = 'Choose a new date and time.'
+  if (!selectedSlot.value) {
+    errorMessage.value = 'Choose a new appointment slot.'
     return
   }
 
@@ -121,10 +164,11 @@ async function handleReschedule() {
 
   try {
     appointment.value = await rescheduleAppointment(appointmentId.value, {
-      new_start_time: new Date(`${form.date}T${form.time}`).toISOString(),
+      new_start_time: selectedSlot.value.start_time,
       reason: form.reason,
     })
     syncFormFromAppointment()
+    form.reason = ''
     toast.success('Appointment rescheduled.')
   } catch (error) {
     errorMessage.value = normalizeApiError(error, 'Unable to reschedule this appointment.')
@@ -195,16 +239,39 @@ onMounted(loadAppointment)
         </CardHeader>
         <CardContent>
           <form class="space-y-4" @submit.prevent="handleReschedule">
-            <div class="grid gap-4 md:grid-cols-2">
-              <div class="space-y-2">
-                <Label for="reschedule-date">New date</Label>
-                <Input id="reschedule-date" v-model="form.date" type="date" />
-              </div>
-              <div class="space-y-2">
-                <Label for="reschedule-time">New time</Label>
-                <Input id="reschedule-time" v-model="form.time" type="time" />
-              </div>
+            <DateTimeField
+              label="New date"
+              :date-value="form.date"
+              :show-time="false"
+              required
+              @update:date-value="form.date = $event; selectedSlot = null; slots = []; hasLoadedSlots = false"
+            />
+
+            <Button type="button" variant="outline" :disabled="!canLoadSlots || loadingSlots" @click="loadSlots">
+              {{ loadingSlots ? 'Loading slots...' : 'Find Available Slots' }}
+            </Button>
+
+            <div v-if="loadingSlots" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Skeleton v-for="item in 6" :key="item" class="h-20 rounded-lg" />
             </div>
+
+            <div v-else-if="slots.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <button
+                v-for="slot in slots"
+                :key="slot.start_time"
+                type="button"
+                class="rounded-lg border p-4 text-left transition hover:border-blue-500 hover:bg-blue-50"
+                :class="selectedSlot?.start_time === slot.start_time ? 'border-blue-600 bg-blue-50' : 'border-gray-200'"
+                @click="selectedSlot = slot"
+              >
+                <p class="font-medium text-gray-900">{{ formatSlot(slot.start_time) }}</p>
+                <p class="text-sm text-gray-500">Ends {{ formatSlot(slot.end_time) }}</p>
+              </button>
+            </div>
+
+            <p v-else-if="hasLoadedSlots" class="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
+              No available slots for this doctor on the selected date.
+            </p>
 
             <div class="space-y-2">
               <Label for="reschedule-reason">Reason</Label>
@@ -221,7 +288,7 @@ onMounted(loadAppointment)
               >
                 {{ cancelling ? 'Cancelling...' : 'Cancel Appointment' }}
               </Button>
-              <Button type="submit" :disabled="rescheduling || cancelling">
+              <Button type="submit" :disabled="!canSubmitReschedule">
                 {{ rescheduling ? 'Rescheduling...' : 'Save New Time' }}
               </Button>
             </div>
