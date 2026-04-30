@@ -505,6 +505,7 @@ class StaffUserSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
             "is_active",
+            "email_verified",
             "primary_role",
             "groups",
         ]
@@ -527,6 +528,7 @@ class StaffUserSerializer(serializers.ModelSerializer):
 class StaffUserUpdateSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(required=False)
     groups = serializers.ListField(child=serializers.CharField(), required=False)
+    email_verified = serializers.BooleanField(required=False)
 
     def validate_groups(self, value):
 
@@ -559,6 +561,10 @@ class StaffUserUpdateSerializer(serializers.Serializer):
 
         if "groups" in validated_data:
             instance.groups.set(validated_data["groups"])
+
+        if "email_verified" in validated_data:
+            instance.email_verified = validated_data["email_verified"]
+            update_fields.append("email_verified")
 
         if update_fields:
             instance.save(update_fields=update_fields)
@@ -656,7 +662,20 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 
 class ResendVerificationEmailSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    identifier = serializers.CharField()
 
-    def validate_email(self, value):
-        return value.strip().lower()
+    def validate(self, attrs):
+        identifier = attrs.get("identifier", "").strip()
+
+        if not identifier:
+            raise serializers.ValidationError("This field is required.")
+
+        user = None
+
+        if "@" in identifier:
+            user = User.objects.filter(email=identifier.lower()).first()
+        else:
+            user = User.objects.filter(username=identifier).first()
+
+        attrs["user"] = user
+        return attrs

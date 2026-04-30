@@ -15,6 +15,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
+from rest_framework.throttling import AnonRateThrottle
 
 
 
@@ -344,27 +345,29 @@ class VerifyEmailView(APIView):
             {"detail": "Email has been verified successfully."},
             status=status.HTTP_200_OK
         )
-    
+
+
+class ResendVerificationThrottle(AnonRateThrottle):
+    rate = "5/min"   
 class ResendVerificationEmailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  
+    throttle_classes = [ResendVerificationThrottle]
 
     def post(self, request):
         serializer = ResendVerificationEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"]
-        user = User.objects.filter(
-            email=email,
-            is_active=True,
-            email_verified=False,
-        ).first()
+        user = serializer.validated_data.get("user")
 
-        if user:
-            send_verification_email(user)
+        if user and not user.email_verified:
+            try:
+                send_verification_email(user)
+            except Exception:
+                pass
 
         return Response(
             {
-                "detail": "If an unverified account with that email exists, a verification email has been sent."
+                "detail": "If an account exists, a verification email has been sent."
             },
             status=status.HTTP_200_OK,
         )

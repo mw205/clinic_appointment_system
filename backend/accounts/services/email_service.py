@@ -8,7 +8,7 @@ def send_email(subject, message, recipient_list):
     email = EmailMessage(
         subject=subject,
         body=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
+        from_email=settings.EMAIL_HOST_USER,
         to=recipient_list,
         connection=connection,
     )

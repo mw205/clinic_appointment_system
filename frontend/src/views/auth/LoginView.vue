@@ -40,6 +40,9 @@
             <div v-if="resendMessage" class="text-green-600 text-sm mt-1">
               {{ resendMessage }}
             </div>
+            <div v-if="resendError" class="text-red-500 text-sm mt-1">
+              {{ resendError }}
+            </div>
           </div>
         </form>
 
@@ -70,6 +73,9 @@ import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { getDefaultRouteForRole, useAuth } from "@/composables/useAuth";
 
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Activity } from "lucide-vue-next";
 
@@ -84,6 +90,7 @@ const errorMessage = ref("");
 const isUnverified = ref(false);
 const isResending = ref(false);
 const resendMessage = ref("");
+const resendError = ref("");
 const successMessage = ref("");
 
 onMounted(() => {
@@ -133,19 +140,26 @@ const handleLogin = async () => {
 
 const handleResendVerification = async () => {
   if (!username.value) return;
+
   isResending.value = true;
   resendMessage.value = "";
-  errorMessage.value = "";
+  resendError.value = "";
   try {
-    // Note: The backend expects email, but login uses username.
-    // We will assume the backend might be able to handle username, or we will just send it as email.
-    // Wait, the backend resend-verification-email endpoint explicitly takes 'email'.
-    // If the user logs in with username, we don't have their email.
-    // But actually, in many systems username is the email. Let's send the username as the email parameter and if it fails, show a generic error.
     const res = await resendVerificationEmail(username.value);
-    resendMessage.value = res.detail || "Verification email sent.";
+    resendMessage.value = res.detail || "If an account exists, a verification email has been sent.";
   } catch (error) {
-    errorMessage.value = "Failed to resend verification email. Please try again.";
+    if (error.response?.status === 429) {
+      resendError.value = "Too many requests, please try again later.";
+    } else {
+      const data = error.response?.data;
+      if (data?.detail) {
+        resendError.value = data.detail;
+      } else if (data?.identifier) {
+        resendError.value = Array.isArray(data.identifier) ? data.identifier.join(', ') : data.identifier;
+      } else {
+        resendError.value = "Failed to resend verification email. Please try again.";
+      }
+    }
   } finally {
     isResending.value = false;
   }

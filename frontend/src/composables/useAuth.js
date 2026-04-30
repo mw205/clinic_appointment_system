@@ -139,10 +139,10 @@ export const useAuth = () => {
     }
   }
 
-  const resendVerificationEmail = async (email) => {
+  const resendVerificationEmail = async (identifier) => {
     isLoading.value = true
     try {
-      const response = await api.post('/accounts/resend-verification-email/', { email })
+      const response = await api.post('/accounts/resend-verification-email/', { identifier })
       return response.data
     } finally {
       isLoading.value = false
