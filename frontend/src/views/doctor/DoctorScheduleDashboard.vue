@@ -24,7 +24,7 @@ import { toast } from 'vue-sonner'
 const store = useScheduleStore()
 const { user, activeProfileId, getCurrentUserProfile } = useAuth()
 const {
-  selectedDoctorId,
+  selectedDoctorProfileId,
   currentDoctorSchedules,
   exceptions,
   availableSlots,
@@ -56,12 +56,12 @@ const belongsToDoctor = (record, doctorId) => {
 
 const visibleSchedules = computed(() => {
   return currentDoctorSchedules.value.filter((schedule) =>
-    belongsToDoctor(schedule, selectedDoctorId.value),
+    belongsToDoctor(schedule, selectedDoctorProfileId.value),
   )
 })
 
 const visibleExceptions = computed(() => {
-  return exceptions.value.filter((exception) => belongsToDoctor(exception, selectedDoctorId.value))
+  return exceptions.value.filter((exception) => belongsToDoctor(exception, selectedDoctorProfileId.value))
 })
 
 const formatTime = (value) => (value ? value.slice(0, 5) : 'All day')
@@ -82,13 +82,13 @@ const formatDate = (value) => {
 }
 
 const loadDoctorData = async () => {
-  if (!selectedDoctorId.value) {
+  if (!selectedDoctorProfileId.value) {
     return
   }
 
   await Promise.all([
     store.loadCurrentDoctorSchedule(),
-    store.loadExceptions({ doctor_id: selectedDoctorId.value }),
+    store.loadExceptions({ doctor_id: selectedDoctorProfileId.value }),
   ])
 }
 
@@ -116,7 +116,7 @@ const handleSaveSchedule = async (payload) => {
 
 const handleDeleteSchedule = async (scheduleId) => {
   try {
-    await store.removeSchedule(scheduleId, selectedDoctorId.value)
+    await store.removeSchedule(scheduleId, selectedDoctorProfileId.value)
     if (editingSchedule.value?.id === scheduleId) {
       editingSchedule.value = null
     }
@@ -143,7 +143,7 @@ const handleSaveException = async (payload) => {
 
 const handleDeleteException = async (exceptionId) => {
   try {
-    await store.removeException(exceptionId, selectedDoctorId.value)
+    await store.removeException(exceptionId, selectedDoctorProfileId.value)
     if (editingException.value?.id === exceptionId) {
       editingException.value = null
     }
@@ -169,7 +169,7 @@ watch(
     }
 
     editingSchedule.value = null
-    selectedDoctorId.value = doctorId
+    selectedDoctorProfileId.value = doctorId
     await loadDoctorData()
   },
   { immediate: true },
@@ -180,8 +180,8 @@ onMounted(async () => {
     await getCurrentUserProfile()
   }
 
-  if (!selectedDoctorId.value && activeProfileId.value) {
-    selectedDoctorId.value = activeProfileId.value
+  if (!selectedDoctorProfileId.value && activeProfileId.value) {
+    selectedDoctorProfileId.value = activeProfileId.value
     await loadDoctorData()
   }
 })
@@ -205,7 +205,7 @@ onMounted(async () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <WeeklyScheduleForm :doctor-id="selectedDoctorId" :initial-value="editingSchedule" :submitting="submitting"
+            <WeeklyScheduleForm :doctor-id="selectedDoctorProfileId" :initial-value="editingSchedule" :submitting="submitting"
               @submit="handleSaveSchedule" @cancel="editingSchedule = null" />
           </CardContent>
         </Card>
@@ -264,7 +264,7 @@ onMounted(async () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ExceptionForm :doctor-id="selectedDoctorId" :initial-value="editingException" :submitting="submitting"
+            <ExceptionForm :doctor-id="selectedDoctorProfileId" :initial-value="editingException" :submitting="submitting"
               @submit="handleSaveException" @cancel="editingException = null" />
           </CardContent>
         </Card>
@@ -321,7 +321,7 @@ onMounted(async () => {
       </TabsContent>
 
       <TabsContent value="slots">
-        <SlotsViewer :doctor-id="selectedDoctorId" :slots="availableSlots" :loading="loadingAvailableSlots"
+        <SlotsViewer :doctor-id="selectedDoctorProfileId" :slots="availableSlots" :loading="loadingAvailableSlots"
           @load-slots="handleLoadSlots" />
       </TabsContent>
     </Tabs>

@@ -23,7 +23,7 @@ import { toast } from 'vue-sonner'
 
 const store = useScheduleStore()
 const {
-  selectedDoctorId,
+  selectedDoctorProfileId,
   schedules,
   exceptions,
   availableSlots,
@@ -37,7 +37,7 @@ const editingSchedule = ref(null)
 const editingException = ref(null)
 
 const selectedDoctor = computed(() => {
-  return store.doctors.find((doctor) => doctor.id === selectedDoctorId.value) ?? null
+  return store.doctors.find((doctor) => doctor.profile_id === selectedDoctorProfileId.value) ?? null
 })
 
 const belongsToDoctor = (record, doctorId) => {
@@ -45,16 +45,16 @@ const belongsToDoctor = (record, doctorId) => {
     return false
   }
 
-  const recordDoctorId = record.doctor?.id ?? record.doctor_id ?? record.doctor
+  const recordDoctorId = record.doctor?.id ?? record.doctor_id ?? record.doctor ?? record.profile_id
   return Number(recordDoctorId) === Number(doctorId)
 }
 
 const visibleSchedules = computed(() => {
-  return schedules.value.filter((schedule) => belongsToDoctor(schedule, selectedDoctorId.value))
+  return schedules.value.filter((schedule) => belongsToDoctor(schedule, selectedDoctorProfileId.value))
 })
 
 const visibleExceptions = computed(() => {
-  return exceptions.value.filter((exception) => belongsToDoctor(exception, selectedDoctorId.value))
+  return exceptions.value.filter((exception) => belongsToDoctor(exception, selectedDoctorProfileId.value))
 })
 
 const exceptionTypeLabel = (type) => (type === 'off' ? 'Day Off' : 'Working Day')
@@ -80,6 +80,7 @@ const loadDoctorData = async (doctorId) => {
   if (!doctorId) {
     return
   }
+  console.log(doctorId);
 
   await Promise.all([
     store.loadSchedules({ doctor: doctorId }),
@@ -134,7 +135,7 @@ const handleCancelEdit = () => {
 
 const handleDeleteSchedule = async (scheduleId) => {
   try {
-    await store.removeSchedule(scheduleId, selectedDoctorId.value)
+    await store.removeSchedule(scheduleId, selectedDoctorProfileId.value)
     if (editingSchedule.value?.id === scheduleId) {
       editingSchedule.value = null
     }
@@ -164,7 +165,7 @@ const handleLoadSlots = async ({ doctor_id, date }) => {
   }
 }
 
-watch(selectedDoctorId, async (doctorId) => {
+watch(selectedDoctorProfileId, async (doctorId) => {
   editingSchedule.value = null
   editingException.value = null
   availableSlots.value = []
@@ -179,8 +180,8 @@ watch(selectedDoctorId, async (doctorId) => {
 onMounted(async () => {
   try {
     await store.loadDoctors()
-    if (store.doctors.length && !selectedDoctorId.value) {
-      selectedDoctorId.value = store.doctors[0].id
+    if (store.doctors.length && !selectedDoctorProfileId.value) {
+      selectedDoctorProfileId.value = store.doctors[0].profile_id
     }
   } catch (error) {
     toast.error(error.response?.data?.detail || 'Failed to load doctors.')
@@ -198,7 +199,7 @@ onMounted(async () => {
         </CardDescription>
       </CardHeader>
       <CardContent class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <DoctorSelector v-model="selectedDoctorId" />
+        <DoctorSelector v-model="selectedDoctorProfileId" />
         <div class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
           <p class="font-medium text-foreground">
             {{ selectedDoctor ? `${selectedDoctor.first_name} ${selectedDoctor.last_name}`.trim() ||
@@ -225,13 +226,8 @@ onMounted(async () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <WeeklyScheduleForm
-              :doctor-id="selectedDoctorId"
-              :initial-value="editingSchedule"
-              :submitting="submitting"
-              @submit="handleSaveSchedule"
-              @cancel="editingSchedule = null"
-            />
+            <WeeklyScheduleForm :doctor-id="selectedDoctorProfileId" :initial-value="editingSchedule" :submitting="submitting"
+              @submit="handleSaveSchedule" @cancel="editingSchedule = null" />
           </CardContent>
         </Card>
 
@@ -239,7 +235,8 @@ onMounted(async () => {
           <CardHeader>
             <CardTitle>Doctor Weekly Schedules</CardTitle>
             <CardDescription>
-              {{ selectedDoctorId ? 'Recurring weekly schedule blocks for the selected doctor.' : 'Select a doctor to view weekly schedules.' }}
+              {{ selectedDoctorProfileId ? `Recurring weekly schedule blocks for the selected doctor.` : `Select a doctor to
+              view weekly schedules.` }}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -291,7 +288,7 @@ onMounted(async () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ExceptionForm :doctor-id="selectedDoctorId" :initial-value="editingException" :submitting="submitting"
+            <ExceptionForm :doctor-id="selectedDoctorProfileId" :initial-value="editingException" :submitting="submitting"
               @submit="handleSaveException" @cancel="handleCancelEdit" />
           </CardContent>
         </Card>
@@ -300,7 +297,8 @@ onMounted(async () => {
           <CardHeader>
             <CardTitle>Doctor Exceptions</CardTitle>
             <CardDescription>
-              {{ selectedDoctorId ? 'Existing scheduling overrides for the selected doctor.' : 'Select a doctor to view exceptions.' }}
+              {{ selectedDoctorProfileId ? `Existing scheduling overrides for the selected doctor.` : `Select a doctor to view
+              exceptions.` }}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -350,7 +348,7 @@ onMounted(async () => {
       </TabsContent>
 
       <TabsContent value="slots">
-        <SlotsViewer :doctor-id="selectedDoctorId" :slots="availableSlots" :loading="loadingAvailableSlots"
+        <SlotsViewer :doctor-id="selectedDoctorProfileId" :slots="availableSlots" :loading="loadingAvailableSlots"
           @load-slots="handleLoadSlots" />
       </TabsContent>
     </Tabs>
