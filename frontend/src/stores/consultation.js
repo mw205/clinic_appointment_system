@@ -27,14 +27,14 @@ export const useConsultationStore = defineStore('consultation', () => {
     }
   }
 
-  async function save(payload) {
+  async function save(data) {
     loading.value = true
     error.value = null
     try {
       if (consultation.value?.id) {
-        consultation.value = await updateConsultation(consultation.value.id, payload)
+        consultation.value = await updateConsultation(consultation.value.id, data)
       } else {
-        consultation.value = await createConsultation(payload)
+        consultation.value = await createConsultation(data)
       }
     } catch (e) {
       error.value = 'Could not save consultation.'

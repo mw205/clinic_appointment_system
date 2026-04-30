@@ -35,7 +35,7 @@ const router = createRouter({
         {
           path: '/doctor/queue',
           name: 'DoctorDailyQueue',
-          component: () => import('@/views/doctor/DailyQueue.vue')
+          component: () => import('@/views/doctor/DailyQueue.vue'),
         },
         {
           path: '/receptionist/schedules',
@@ -122,7 +122,13 @@ const router = createRouter({
           path: '/admin/dashboard',
           name: 'AdminDashboard',
           component: () => import('@/views/admin/AdminDashboardView.vue'),
-          meta: { requiresAuth: true, role: 'admin' },
+          meta: { requiresAuth: true, role: 'Admin' },
+        },
+        {
+          path: '/admin/analytics',
+          name: 'AdminAnalytics',
+          component: () => import('@/views/admin/AdminAnalyticsView.vue'),
+          meta: { requiresAuth: true, role: 'Admin' },
         },
         {
           path: '',

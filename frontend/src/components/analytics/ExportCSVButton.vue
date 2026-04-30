@@ -1,29 +1,25 @@
 <script setup>
-import { Button } from '@/components/ui/button';
-import { useAnalyticsStore } from '@/stores/analytics';
-import { ref } from 'vue';
+import { ref } from 'vue'
+import { Button } from '@/components/ui/button'
+import { useAnalyticsStore } from '@/stores/analytics'
 
 const props = defineProps({
-  type: String,
-  label: String
-});
-const analyticsStore = useAnalyticsStore();
-const exporting = ref(false);
+  type: String, // 'appointments' or 'consultations'
+  label: String,
+})
+
+const store = useAnalyticsStore()
+const exporting = ref(false)
 
 async function handleExport() {
-  exporting.value = true;
-  try {
-    await analyticsStore.exportCSV(props.type);
-  } catch (error) {
-    throw error;
-  }
-  finally {
-    exporting.value = false;
-  }
+  exporting.value = true
+  await store.exportCSV(props.type)
+  exporting.value = false
 }
 </script>
 
 <template>
   <Button variant="outline" :disabled="exporting" @click="handleExport">
-    {{ exporting ? 'Downloading...' : label }}</Button>
+    {{ exporting ? 'Downloading...' : label }}
+  </Button>
 </template>

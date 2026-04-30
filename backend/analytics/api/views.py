@@ -18,6 +18,7 @@ class AnalyticsSummaryViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"])
     def summary(self, request):
         total = Appointment.objects.count()
+        total_consultations = ConsultationRecord.objects.count()
         no_show_count = Appointment.objects.filter(
             status = Appointment.Status.NO_SHOW
         ).count()
@@ -39,9 +40,10 @@ class AnalyticsSummaryViewSet(viewsets.ViewSet):
         )
         data ={
             "total_appointments": total,
+            "total_consultations": total_consultations,
             "no_show_rate": no_show_rate,
-            "group_by_status": group_by_status,
-            "group_by_hour": group_by_hour,
+            "appointment_status_counts": group_by_status,
+            "peak_hours": group_by_hour,
         }
         serializer = AnalyticsSummaryModelSerializer(data)
         return Response(serializer.data)
@@ -90,5 +92,4 @@ class AnalyticsSummaryViewSet(viewsets.ViewSet):
                 c.completed_at,
             ])
         return response
-
 

@@ -1,16 +1,18 @@
 import { api } from '@/lib/api'
+import { API_ENDPOINTS } from '@/constants/endpoints.js'
 
 export async function fetchSummary() {
-  const { data } = await api.get('/analytics/summary/')
-  return data
+  const response = await  api.get(API_ENDPOINTS.ANALYTICS.SUMMARY)
+  return response.data
 }
 
 export async function downloadCSV(type) {
-  const { data } = await api.get(`/analytics/export/${type}/`, {
-    responseType: 'blob',
-  })
+  const endpoint = type === 'appointments'
+    ? API_ENDPOINTS.ANALYTICS.EXPORT_APPOINTMENTS
+    : API_ENDPOINTS.ANALYTICS.EXPORT_CONSULTATIONS
 
-  const url = window.URL.createObjectURL(new Blob([data]))
+  const response = await api.get(endpoint, { responseType: 'blob' })
+  const url = window.URL.createObjectURL(new Blob([response.data]))
   const a = document.createElement('a')
   a.href = url
   a.download = `${type}.csv`
