@@ -13,7 +13,7 @@ import {
   Activity,
   BarChart3,
   Bell,
-  Calendar,
+  Calendar, ClipboardClock,
   ClipboardList,
   Clock,
   FileText,
@@ -55,6 +55,12 @@ const NAV_ITEMS = [
     label: "Medical Records",
     icon: FileText,
     path: "records",
+    roles: ["Doctor"],
+  },
+  {
+    label: "Pending Requests",
+    icon: ClipboardClock,
+    path: "pending-requests",
     roles: ["Doctor"],
   },
   {

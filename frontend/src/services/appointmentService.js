@@ -114,6 +114,11 @@ export const cancelAppointment = async (id) => {
   return response.data
 }
 
+export const confirmAppointment = async (id) => {
+  const response = await api.post(appointmentActionUrl(id, 'confirm'))
+  return response.data
+}
+
 export const rescheduleAppointment = async (id, payload) => {
   const response = await api.post(appointmentActionUrl(id, 'reschedule'), payload)
   return response.data

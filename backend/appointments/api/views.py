@@ -64,7 +64,7 @@ class AppointmentViewSet(
     pagination_class = AppointmentListPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = AppointmentFilter
-    ordering_fields = ["start_time", "created_at"]
+    ordering_fields = ["start_time", "check_in_time", "created_at"]
     ordering = ["-start_time"]
 
     def get_permissions(self):
@@ -123,9 +123,9 @@ class AppointmentViewSet(
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
         appointment = self.get_object()
-        if not request.user.has_perm("appointments.change_appointment"):
-            raise PermissionDenied("You do not have permission")
-        if appointment.doctor.user_id != request.user.id:
+        if is_receptionist(request.user):
+            pass
+        elif appointment.doctor.user_id != request.user.id:
             raise PermissionDenied("You do not have permission")
 
         if appointment.status != Appointment.Status.REQUESTED:

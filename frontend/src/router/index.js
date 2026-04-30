@@ -22,6 +22,11 @@ const router = createRouter({
       meta: { requiresAuth: true },
       children: [
         {
+          path: '/doctor/appointments',
+          name: 'DoctorAppointments',
+          component: () => import('@/views/doctor/AppointmentsView.vue')
+        },
+        {
           path: '/doctor/appointments/:appointmentId/consultation',
           name: 'ConsultationForm',
           component: () => import('@/views/doctor/ConsultationFormView.vue'),
@@ -36,6 +41,16 @@ const router = createRouter({
           path: '/doctor/queue',
           name: 'DoctorDailyQueue',
           component: () => import('@/views/doctor/DailyQueue.vue')
+        },
+        {
+          path: '/doctor/pending-requests',
+          name: 'DoctorPendingRequests',
+          component: () => import('@/views/doctor/PendingRequestsView.vue'),
+        },
+        {
+          path: '/receptionist/appointments',
+          name: 'ReceptionistAppointments',
+          component: () => import('@/views/receptionist/AppointmentsView.vue'),
         },
         {
           path: '/receptionist/schedules',
