@@ -138,6 +138,39 @@ const router = createRouter({
           meta: { requiresAuth: true, role: 'admin' },
         },
         {
+          path: '/admin/users',
+          name: 'AdminUsersList',
+          component: () => import('@/views/admin/UsersListView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: '/admin/users/:id',
+          name: 'AdminUserEdit',
+          component: () => import('@/views/admin/UserEditView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: '/settings',
+          component: () => import('@/views/settings/SettingsLayout.vue'),
+          meta: { requiresAuth: true },
+          children: [
+            {
+              path: '',
+              redirect: '/settings/account'
+            },
+            {
+              path: 'account',
+              name: 'AccountSettings',
+              component: () => import('@/views/settings/AccountSettingsView.vue')
+            },
+            {
+              path: 'profile',
+              name: 'ProfileSettings',
+              component: () => import('@/views/settings/ProfileSettingsView.vue')
+            }
+          ]
+        },
+        {
           path: '',
           name: 'home-redirect',
           redirect: () => {

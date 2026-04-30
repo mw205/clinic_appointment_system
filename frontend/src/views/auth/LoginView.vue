@@ -11,6 +11,9 @@
         <CardDescription>Sign in to manage your appointments</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
+        <div v-if="successMessage" class="text-green-700 text-sm text-center bg-green-50 p-3 rounded-md border border-green-200">
+          {{ successMessage }}
+        </div>
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div class="space-y-2">
             <Label for="username">Username</Label>
@@ -78,8 +81,8 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { getDefaultRouteForRole, useAuth } from "@/composables/useAuth";
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -89,6 +92,7 @@ import { Button } from "@/components/ui/button";
 import { Activity } from "lucide-vue-next";
 
 const router = useRouter();
+const route = useRoute();
 const { login, user, resendVerificationEmail } = useAuth();
 
 const username = ref("");
@@ -98,6 +102,13 @@ const errorMessage = ref("");
 const isUnverified = ref(false);
 const isResending = ref(false);
 const resendMessage = ref("");
+const successMessage = ref("");
+
+onMounted(() => {
+  if (route.query.message === 'password_changed') {
+    successMessage.value = "Your password has been successfully changed. Please log in again.";
+  }
+});
 
 const handleLogin = async () => {
   isLoading.value = true;

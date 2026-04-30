@@ -70,7 +70,8 @@ const NAV_ITEMS = [
     roles: ["Receptionist", "Admin", "Doctor"],
   },
   { label: "Analytics", icon: BarChart3, path: "analytics", roles: ["Admin"] },
-  { label: "User Management", icon: Users, path: "users", roles: ["Admin"] },
+  { label: "User Management", icon: Users, path: "users", roles: ["Admin", "Receptionist"], fullPath: "/admin/users" },
+  { label: "Settings", icon: Settings, path: "settings", roles: ["Patient", "Doctor", "Receptionist", "Admin"], fullPath: "/settings" },
 ];
 const router = useRouter();
 const route = useRoute();
@@ -105,20 +106,33 @@ const routeNameFormatted = computed(() => {
   }
   return "Dashboard";
 });
-const isActivePath = (path) => {
-  if (route.path.includes(path)) return true;
-  return route.name?.toString().includes(path);
+const isActivePath = (item) => {
+  if (item.fullPath) {
+    return route.path.startsWith(item.fullPath);
+  }
+  return route.path.includes(item.path) || route.name?.toString().includes(item.path);
 };
-const handleNavigate = (path) => {
+
+const handleNavigate = (pathOrItem) => {
   sidebarOpen.value = false;
   if (!user.value) return;
-  const role = user.value.primary_role.toLowerCase();
-  // Based on current routing setup, prefix path with role
-  if (path === "profile") {
-    // Handle profile specifically if needed
+
+  if (typeof pathOrItem === 'object' && pathOrItem !== null) {
+    if (pathOrItem.fullPath) {
+      router.push(pathOrItem.fullPath);
+    } else {
+      const role = user.value.primary_role.toLowerCase();
+      router.push(`/${role}/${pathOrItem.path}`);
+    }
+    return;
+  }
+
+  // Handle string paths (like from dropdown)
+  if (pathOrItem === "profile" || pathOrItem === "settings") {
+    router.push("/settings");
   } else {
-    // Attempt standard navigation
-    router.push(`/${role}/${path}`);
+    const role = user.value.primary_role.toLowerCase();
+    router.push(`/${role}/${pathOrItem}`);
   }
 };
 
@@ -144,9 +158,9 @@ const handleNavigate = (path) => {
         <!--navigation items-->
         <nav class="flex-1 overflow-y-auto px-3 py-4">
           <div class="space-y-1">
-            <button v-for="item in visibleNavItems" :key="item.path" @click="handleNavigate(item.path)" :class="[
+            <button v-for="item in visibleNavItems" :key="item.label" @click="handleNavigate(item)" :class="[
               'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-              isActivePath(item.path)
+              isActivePath(item)
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-gray-700 hover:bg-gray-100'
             ]">
@@ -215,7 +229,7 @@ const handleNavigate = (path) => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem @click="handleNavigate('profile')">
+                <DropdownMenuItem @click="handleNavigate('settings')">
                   <Settings class="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>

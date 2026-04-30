@@ -344,20 +344,17 @@ class CurrentUserUpdateSerializer(serializers.Serializer):
                 "Phone number must contain only digits and optional leading '+'."
             )
 
-        
         digits_only = value.lstrip('+')
 
-        # validate digit length only
         if len(digits_only) < 10 or len(digits_only) > 15:
             raise serializers.ValidationError(
                 "Phone number must be between 10 and 15 digits."
             )
-        
-        normalized_phone = '+' + digits_only if value.startswith('+') else digits_only
 
-        if User.objects.filter(phone_number=normalized_phone).exclude(id=user.id).exists():
+        normalized_phone = digits_only  
+        if User.objects.filter(phone_number__endswith=normalized_phone).exclude(id=user.id).exists():
             raise serializers.ValidationError("Phone number is already registered.")
-        
+
         return normalized_phone
 
     def update(self, instance, validated_data):

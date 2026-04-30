@@ -140,6 +140,74 @@ export const useAuth = () => {
     console.warn("Social login not implemented.")
   }
 
+  const updateAccount = async (data) => {
+    isLoading.value = true
+    try {
+      const response = await api.patch('/accounts/me/', data)
+      user.value = response.data
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const changePassword = async (current_password, new_password, new_password_confirm) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/me/change-password/', {
+        current_password,
+        new_password,
+        new_password_confirm
+      })
+      // Clear user session as they need to log in again
+      setAccessToken(null)
+      user.value = null
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const getPatientProfile = async () => {
+    isLoading.value = true
+    try {
+      const response = await api.get('/accounts/me/patient-profile/')
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const updatePatientProfile = async (data) => {
+    isLoading.value = true
+    try {
+      const response = await api.patch('/accounts/me/patient-profile/', data)
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const getDoctorProfile = async () => {
+    isLoading.value = true
+    try {
+      const response = await api.get('/accounts/me/doctor-profile/')
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const updateDoctorProfile = async (data) => {
+    isLoading.value = true
+    try {
+      const response = await api.patch('/accounts/me/doctor-profile/', data)
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     user,
     isInitialized,
@@ -155,6 +223,12 @@ export const useAuth = () => {
     resetPassword,
     logout,
     loginWithSocial,
+    updateAccount,
+    changePassword,
+    getPatientProfile,
+    updatePatientProfile,
+    getDoctorProfile,
+    updateDoctorProfile,
     getUserRole,
   }
 }
