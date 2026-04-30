@@ -21,7 +21,7 @@ export const useScheduleStore = defineStore('schedule', () => {
   const submitting = ref(false)
   const error = ref(null)
 
-  const loadDoctors = async (params = { role: 'Doctor' }) => {
+  const loadDoctors = async (params = { role: 'Doctor', paginate: false }) => {
     loadingDoctors.value = true
     error.value = null
 

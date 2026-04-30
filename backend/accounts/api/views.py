@@ -41,6 +41,11 @@ def delete_refresh_cookie(response):
 class UserPagination(PageNumberPagination):
     page_size = 20
 
+    def paginate_queryset(self, queryset, request, view=None):
+        if request.query_params.get("paginate") == "false":
+            return None
+        return super().paginate_queryset(queryset, request, view)
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
