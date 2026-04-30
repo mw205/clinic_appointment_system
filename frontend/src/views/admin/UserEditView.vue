@@ -5,7 +5,7 @@
         <Button variant="outline" size="icon" @click="router.push('/admin/users')">
           <ArrowLeft class="h-4 w-4" />
         </Button>
-        <h2 class="text-3xl font-bold tracking-tight">Edit User</h2>
+        <h2 class="text-3xl font-bold tracking-tight">{{ canEdit ? 'Edit User' : 'View User' }}</h2>
       </div>
     </div>
 
@@ -13,7 +13,7 @@
       <CardHeader>
         <CardTitle>User Details</CardTitle>
         <CardDescription>
-          Update role and status for {{ user?.username || 'this user' }}.
+          {{ canEdit ? 'Update role and status for ' : 'Viewing role and status for ' }} {{ user?.username || 'this user' }}.
         </CardDescription>
       </CardHeader>
       
@@ -48,12 +48,26 @@
                 type="checkbox"
                 id="isActive"
                 v-model="formData.is_active"
-                :disabled="isSaving"
-                class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                :disabled="isSaving || !canEdit"
+                class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <Label for="isActive" class="font-medium">Account is Active</Label>
             </div>
             <p class="text-sm text-gray-500 pl-6">Uncheck this to disable the user's account and prevent them from logging in.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isEmailVerified"
+                v-model="formData.email_verified"
+                :disabled="isSaving || !canEdit"
+                class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <Label for="isEmailVerified" class="font-medium">Email is Verified</Label>
+            </div>
+            <p class="text-sm text-gray-500 pl-6">Check this to manually verify the user's email address.</p>
           </div>
 
           <div class="space-y-2">
@@ -64,8 +78,8 @@
                   type="checkbox"
                   :value="role"
                   v-model="formData.groups"
-                  :disabled="isSaving"
-                  class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                  :disabled="isSaving || !canEdit"
+                  class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <span class="text-sm font-medium">{{ role }}</span>
               </label>
@@ -73,7 +87,7 @@
             <p class="text-sm text-gray-500 mt-1">Select all roles that apply to this user.</p>
           </div>
 
-          <Button type="submit" class="bg-teal-600 hover:bg-teal-700" :disabled="isSaving">
+          <Button v-if="canEdit" type="submit" class="bg-teal-600 hover:bg-teal-700" :disabled="isSaving">
             {{ isSaving ? 'Saving...' : 'Save Changes' }}
           </Button>
 
@@ -86,9 +100,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { userService } from "@/services/userService";
+import { useAuth } from "@/composables/useAuth";
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -97,6 +112,9 @@ import { ArrowLeft } from "lucide-vue-next";
 
 const route = useRoute();
 const router = useRouter();
+const { user: currentUser } = useAuth();
+
+const canEdit = computed(() => currentUser.value?.primary_role === 'Admin');
 
 const userId = route.params.id;
 
@@ -112,6 +130,7 @@ const availableRoles = ["Patient", "Doctor", "Receptionist", "Admin"];
 
 const formData = reactive({
   is_active: false,
+  email_verified: false,
   groups: [],
 });
 
@@ -122,6 +141,7 @@ const loadUser = async () => {
     const data = await userService.getUser(userId);
     user.value = data;
     formData.is_active = data.is_active !== false; // Default to true if undefined
+    formData.email_verified = data.email_verified === true;
     formData.groups = Array.isArray(data.groups) ? [...data.groups] : [];
   } catch (error) {
     fetchError.value = "Failed to load user details.";
@@ -143,6 +163,7 @@ const handleUpdate = async () => {
   try {
     await userService.updateUser(userId, {
       is_active: formData.is_active,
+      email_verified: formData.email_verified,
       groups: formData.groups,
     });
     successMessage.value = "User updated successfully.";

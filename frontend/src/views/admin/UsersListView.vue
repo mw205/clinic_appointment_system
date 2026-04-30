@@ -12,6 +12,23 @@
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+          <Input v-model="filters.search" placeholder="Search name, email, username..." class="w-full sm:max-w-xs" />
+          
+          <select v-model="filters.role" class="flex h-10 w-full sm:w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <option value="">All Roles</option>
+            <option value="Admin">Admin</option>
+            <option value="Receptionist">Receptionist</option>
+            <option value="Doctor">Doctor</option>
+            <option value="Patient">Patient</option>
+          </select>
+          
+          <select v-model="filters.is_active" class="flex h-10 w-full sm:w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <option value="">All Statuses</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
         <div v-if="isLoading" class="text-gray-500 py-4">
           Loading users...
         </div>
@@ -58,12 +75,27 @@
                 </td>
                 <td class="px-6 py-4">
                   <Button variant="outline" size="sm" @click="router.push(`/admin/users/${user.id}`)">
-                    Edit
+                    {{ canEdit ? 'Edit' : 'View' }}
                   </Button>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <div v-if="totalPages > 1 && !isLoading" class="flex items-center justify-between mt-4 px-2 py-4 border-t">
+          <div class="text-sm text-gray-500">
+            Showing {{ users.length }} of {{ totalCount }} users
+          </div>
+          <div class="flex gap-2">
+            <Button variant="outline" size="sm" :disabled="currentPage === 1" @click="fetchUsers(currentPage - 1)">
+              Previous
+            </Button>
+            <span class="flex items-center px-2 text-sm font-medium">Page {{ currentPage }} of {{ totalPages }}</span>
+            <Button variant="outline" size="sm" :disabled="currentPage >= totalPages" @click="fetchUsers(currentPage + 1)">
+              Next
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -71,26 +103,67 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, reactive, onMounted, watch, computed } from "vue";
 import { useRouter } from "vue-router";
 import { userService } from "@/services/userService";
+import { useAuth } from "@/composables/useAuth";
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const router = useRouter();
+const { user: currentUser } = useAuth();
+
+const canEdit = computed(() => currentUser.value?.primary_role === 'Admin');
 
 const users = ref([]);
+const totalCount = ref(0);
+const currentPage = ref(1);
+const totalPages = ref(1);
 const isLoading = ref(true);
 const error = ref("");
 
-const fetchUsers = async () => {
+const filters = reactive({
+  search: "",
+  role: "",
+  is_active: ""
+});
+
+let debounceTimer = null;
+
+watch(() => filters.search, () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fetchUsers(1);
+  }, 400); // 400ms debounce
+});
+
+watch([() => filters.role, () => filters.is_active], () => {
+  fetchUsers(1);
+});
+
+const fetchUsers = async (page = 1) => {
   isLoading.value = true;
   error.value = "";
   try {
-    const data = await userService.getUsers();
-    // Assuming data is an array or { results: [...] } based on DRF pagination
-    users.value = data.results || data;
+    const params = { page };
+    if (filters.search) params.search = filters.search;
+    if (filters.role) params.role = filters.role;
+    if (filters.is_active !== "") params.is_active = filters.is_active;
+
+    const data = await userService.getUsers(params);
+    if (data.results) {
+      users.value = data.results;
+      totalCount.value = data.count;
+      currentPage.value = page;
+      // Defaulting to 10 items per page if PAGE_SIZE isn't in response
+      totalPages.value = Math.ceil(data.count / 10) || 1;
+    } else {
+      users.value = data;
+      totalCount.value = data.length;
+      totalPages.value = 1;
+    }
   } catch (err) {
     error.value = "Failed to load users.";
     console.error(err);
