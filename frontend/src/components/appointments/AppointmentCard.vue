@@ -22,11 +22,15 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  canConfirm: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(["check-in", "no-show", "complete", "view-record"]);
+const emit = defineEmits(["confirm", "check-in", "no-show", "complete", "view-record"]);
 
-const { formatTime } = useFormatters();
+const { formatTime, formatDate, formatDateTime } = useFormatters();
 
 const waitTime = computed(() => props.calculateWaitTime(props.appointment.check_in_time));
 </script>
@@ -58,6 +62,7 @@ const waitTime = computed(() => props.calculateWaitTime(props.appointment.check_
           <div class="flex items-center gap-4 mt-2 text-sm text-gray-600">
             <span class="flex items-center gap-1">
               <Clock class="w-4 h-4" />
+              {{appointment.status === "requested" ? formatDate(appointment.start_time) : ""}}
               {{ formatTime(appointment.start_time) }} - {{ formatTime(appointment.end_time) }}
             </span>
           </div>
@@ -65,6 +70,15 @@ const waitTime = computed(() => props.calculateWaitTime(props.appointment.check_
       </div>
 
       <div class="flex gap-2 flex-shrink-0">
+        <Button
+          v-if="appointment.status === 'requested' && canConfirm"
+          size="sm"
+          class="bg-blue-600 hover:bg-blue-700"
+          @click="emit('confirm', appointment.id)"
+        >
+          Confirm
+        </Button>
+
         <Button
           v-if="appointment.status === 'confirmed'"
           size="sm"
@@ -75,7 +89,7 @@ const waitTime = computed(() => props.calculateWaitTime(props.appointment.check_
         </Button>
 
         <Button
-          v-if="appointment.status !== 'completed' && appointment.status !== 'no_show'"
+          v-if="appointment.status !== 'requested' && appointment.status !== 'completed' && appointment.status !== 'no_show'"
           size="sm"
           variant="outline"
           @click="emit('no-show', appointment.id)"

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
@@ -39,13 +39,49 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  canConfirm: {
+    type: Boolean,
+    default: false,
+  },
+  fetchMode: {
+    type: String,
+    default: "auto",
+    validator: (value) => ["auto", "list", "doctor-queue"].includes(value),
+  },
+  fixedParams: {
+    type: Object,
+    default: () => ({}),
+  },
+  showTabs: {
+    type: Boolean,
+    default: true,
+  },
+  showStatusFilter: {
+    type: Boolean,
+    default: true,
+  },
+  useTimeRangeFilters: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const store = useAppointmentsStore();
 const router = useRouter();
 const { appointments, pagination } = storeToRefs(store);
-const isPaginated = computed(() => props.mode === "receptionist");
+const isPaginated = computed(() => {
+  if (props.fetchMode === "list") {
+    return true;
+  }
+
+  if (props.fetchMode === "doctor-queue") {
+    return false;
+  }
+
+  return props.mode === "receptionist";
+});
 const showDoctorFilter = computed(() => props.mode === "receptionist");
+const rangeFilterBaseDate = computed(() => props.fixedParams.date || new Date().toISOString().slice(0, 10));
 const {
   filters,
   stats,
@@ -56,6 +92,8 @@ const {
   calculateWaitTime,
 } = useAppointments(appointments, {
   includeDoctorNameFilter: showDoctorFilter.value,
+  useTimeRangeFilters: props.useTimeRangeFilters,
+  baseDate: rangeFilterBaseDate.value,
 });
 
 let filtersDebounceId = null;
@@ -67,22 +105,75 @@ const formattedDate = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 }).format(new Date());
 
+const effectiveRequestParams = computed(() => {
+  const params = {
+    ...requestParams.value,
+    ...props.fixedParams,
+  };
+
+  if (!props.showStatusFilter && props.fixedParams.status) {
+    delete params.status;
+    params.status = props.fixedParams.status;
+  }
+
+  return params;
+});
+
+const hasVisibleFilters = computed(() => {
+  if (!hasActiveFilters.value) {
+    return false;
+  }
+
+  return (
+    filters.value.patientName.trim() !== ""
+    || (showDoctorFilter.value && filters.value.doctorName.trim() !== "")
+    || filters.value.startDate !== ""
+    || filters.value.endDate !== ""
+    || (props.showStatusFilter && filters.value.status !== "all")
+  );
+});
+
 const loadAppointments = async (params = {}) => {
-  if (props.mode === "doctor") {
-    await store.loadDoctorDailyQueue(params);
+  const finalParams = {
+    ...params,
+    ...props.fixedParams,
+  };
+
+  if (props.fetchMode === "list") {
+    await store.loadAppointments(finalParams);
     return;
   }
 
-  await store.loadAppointments(params);
+  if (props.fetchMode === "doctor-queue") {
+    await store.loadDoctorDailyQueue(finalParams);
+    return;
+  }
+
+  if (props.mode === "doctor") {
+    await store.loadDoctorDailyQueue(finalParams);
+    return;
+  }
+
+  await store.loadAppointments(finalParams);
 };
 
 const reloadCurrentQueue = async () => {
   const params = isPaginated.value
-    ? { ...requestParams.value, page: pagination.value.currentPage }
-    : requestParams.value
+    ? { ...effectiveRequestParams.value, page: pagination.value.currentPage }
+    : effectiveRequestParams.value;
 
   await loadAppointments(params);
 };
+
+async function handleConfirm(id) {
+  try {
+    const res = await store.confirmAppointment(id);
+    await reloadCurrentQueue();
+    toast.success(res.message || "Appointment confirmed");
+  } catch (err) {
+    toast.error(err.response?.data?.message || err.response?.data?.error || "Something went wrong");
+  }
+}
 
 async function handleCheckIn(id) {
   try {
@@ -119,7 +210,7 @@ const handleNoShow = async (id) => {
 };
 
 const handlePageChange = async (page) => {
-  await loadAppointments({ ...requestParams.value, page });
+  await loadAppointments({ ...effectiveRequestParams.value, page });
 };
 
 watch(
@@ -128,8 +219,8 @@ watch(
     clearTimeout(filtersDebounceId);
     filtersDebounceId = setTimeout(() => {
       const params = isPaginated.value
-        ? { ...requestParams.value, page: 1 }
-        : requestParams.value
+        ? { ...effectiveRequestParams.value, page: 1 }
+        : effectiveRequestParams.value;
 
       loadAppointments(params);
     }, 300);
@@ -137,8 +228,24 @@ watch(
   { deep: true },
 );
 
+watch(
+  () => props.fixedParams,
+  async () => {
+    const params = isPaginated.value
+      ? { ...effectiveRequestParams.value, page: 1 }
+      : effectiveRequestParams.value;
+
+    await loadAppointments(params);
+  },
+  { deep: true },
+);
+
 onMounted(async () => {
-  await loadAppointments();
+  await loadAppointments(effectiveRequestParams.value);
+});
+
+onBeforeUnmount(() => {
+  clearTimeout(filtersDebounceId);
 });
 </script>
 
@@ -174,10 +281,11 @@ onMounted(async () => {
             />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="showStatusFilter" class="space-y-2">
             <Label for="status-filter">Status</Label>
             <NativeSelect id="status-filter" v-model="filters.status" class="w-full">
               <NativeSelectOption value="all">All statuses</NativeSelectOption>
+              <NativeSelectOption value="requested">Requested</NativeSelectOption>
               <NativeSelectOption value="confirmed">Confirmed</NativeSelectOption>
               <NativeSelectOption value="checked_in">Checked In</NativeSelectOption>
               <NativeSelectOption value="completed">Completed</NativeSelectOption>
@@ -186,30 +294,28 @@ onMounted(async () => {
           </div>
 
           <div class="space-y-2">
-            <Label for="start-date-filter">Start Date</Label>
+            <Label for="start-date-filter">{{ useTimeRangeFilters ? "Start Time" : "Start Date" }}</Label>
             <Input
               id="start-date-filter"
               v-model="filters.startDate"
-              type="date"
+              :type="useTimeRangeFilters ? 'time' : 'date'"
             />
           </div>
 
           <div class="space-y-2">
-            <Label for="end-date-filter">End Date</Label>
+            <Label for="end-date-filter">{{ useTimeRangeFilters ? "End Time" : "End Date" }}</Label>
             <Input
               id="end-date-filter"
               v-model="filters.endDate"
-              type="date"
+              :type="useTimeRangeFilters ? 'time' : 'date'"
             />
           </div>
         </div>
 
         <div class="mb-6 flex items-center justify-between gap-3">
-          <p class="text-sm text-gray-500">
-            Showing {{ stats.total }} appointments
-          </p>
+
           <Button
-            v-if="hasActiveFilters"
+            v-if="hasVisibleFilters"
             variant="outline"
             size="sm"
             @click="resetFilters"
@@ -218,7 +324,7 @@ onMounted(async () => {
           </Button>
         </div>
 
-        <Tabs default-value="all" class="space-y-4">
+        <Tabs v-if="showTabs" default-value="all" class="space-y-4">
           <TabsList>
             <TabsTrigger value="all">All ({{ stats.total }})</TabsTrigger>
             <TabsTrigger value="checked_in">Checked In ({{ stats.checkedIn }})</TabsTrigger>
@@ -231,6 +337,8 @@ onMounted(async () => {
               :calculate-wait-time="calculateWaitTime"
               :can-start-consultation="canStartConsultation"
               :can-view-record="canViewRecord"
+              :can-confirm="canConfirm"
+              @confirm="handleConfirm"
               @check-in="handleCheckIn"
               @no-show="handleNoShow"
               @complete="handleComplete"
@@ -245,6 +353,8 @@ onMounted(async () => {
               :calculate-wait-time="calculateWaitTime"
               :can-start-consultation="canStartConsultation"
               :can-view-record="canViewRecord"
+              :can-confirm="canConfirm"
+              @confirm="handleConfirm"
               @check-in="handleCheckIn"
               @no-show="handleNoShow"
               @complete="handleComplete"
@@ -259,6 +369,8 @@ onMounted(async () => {
               :calculate-wait-time="calculateWaitTime"
               :can-start-consultation="canStartConsultation"
               :can-view-record="canViewRecord"
+              :can-confirm="canConfirm"
+              @confirm="handleConfirm"
               @check-in="handleCheckIn"
               @no-show="handleNoShow"
               @complete="handleComplete"
@@ -267,6 +379,21 @@ onMounted(async () => {
             />
           </TabsContent>
         </Tabs>
+
+        <AppointmentList
+          v-else
+          :appointments="appointmentsByTab.all"
+          :calculate-wait-time="calculateWaitTime"
+          :can-start-consultation="canStartConsultation"
+          :can-view-record="canViewRecord"
+          :can-confirm="canConfirm"
+          @confirm="handleConfirm"
+          @check-in="handleCheckIn"
+          @no-show="handleNoShow"
+          @complete="handleComplete"
+          @view-record="handleViewRecord"
+          empty-message="No appointments match the current filters."
+        />
 
         <QueuePaginator
           v-if="isPaginated"

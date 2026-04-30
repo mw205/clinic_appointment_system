@@ -22,9 +22,13 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  canConfirm: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(["check-in", "no-show", "complete", "view-record"]);
+const emit = defineEmits(["confirm", "check-in", "no-show", "complete", "view-record"]);
 </script>
 
 <template>
@@ -43,6 +47,8 @@ const emit = defineEmits(["check-in", "no-show", "complete", "view-record"]);
       :calculate-wait-time="calculateWaitTime"
       :can-start-consultation="canStartConsultation"
       :can-view-record="canViewRecord"
+      :can-confirm="canConfirm"
+      @confirm="emit('confirm', $event)"
       @check-in="emit('check-in', $event)"
       @no-show="emit('no-show', $event)"
       @complete="emit('complete', $event)"

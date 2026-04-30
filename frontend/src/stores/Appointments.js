@@ -109,6 +109,16 @@ async function loadDoctorDailyQueue(params = {})
   }
 }
 
+async function confirmAppointment(appointment_id) {
+  loading.value = true
+  try {
+    const response = await appointmentService.confirmAppointment(appointment_id)
+    return response
+  } finally {
+    loading.value = false
+  }
+}
+
 
 async function checkInAppointment(appointment_id) {
   loading.value = true
@@ -134,5 +144,17 @@ async function hideAppointment(appointment_id)
 
 }
 
-  return { appointments, pagination, pendingRequests, loading, checkInAppointment, actionStatus, actionMessage , hideAppointment, loadAppointments, loadDoctorDailyQueue};
+  return {
+    appointments,
+    pagination,
+    pendingRequests,
+    loading,
+    confirmAppointment,
+    checkInAppointment,
+    actionStatus,
+    actionMessage,
+    hideAppointment,
+    loadAppointments,
+    loadDoctorDailyQueue,
+  };
 })
