@@ -129,6 +129,7 @@ class LoginSerializer(serializers.Serializer):
 class CurrentUserSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     primary_role = serializers.SerializerMethodField()
+    profile_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
