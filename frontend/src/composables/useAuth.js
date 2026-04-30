@@ -1,5 +1,6 @@
+import { API_ENDPOINTS } from '@/constants/endpoints'
+import { api, clearAuthQueue, setAccessToken } from '@/lib/api'
 import { computed, ref } from 'vue'
-import { api, setAccessToken, clearAuthQueue } from '@/lib/api'
 
 export const getDefaultRouteForRole = (role) => {
   switch (role) {
@@ -17,6 +18,17 @@ export const getDefaultRouteForRole = (role) => {
 }
 
 const user = ref(null)
+const doctorProfile = ref(null)
+const patientProfile = ref(null)
+const activeProfileId = computed(() => {
+  if (user.value?.primary_role === 'Doctor') {
+    return doctorProfile.value?.id
+  }
+  if (user.value?.primary_role === 'Patient') {
+    return patientProfile.value?.id
+  }
+  return null
+})
 const isInitialized = ref(false)
 const isLoading = ref(false)
 const authReady = ref(false)
@@ -25,12 +37,48 @@ const getUserRole = () => {
   return user.value?.primary_role
 }
 
+const resetRoleProfiles = () => {
+  doctorProfile.value = null
+  patientProfile.value = null
+}
+
 export const useAuth = () => {
   const isAuthenticated = computed(() => !!user.value)
 
+  const getCurrentUserProfile = async () => {
+    if (!user.value?.primary_role) {
+      resetRoleProfiles()
+      return null
+    }
+
+    resetRoleProfiles()
+
+    if (user.value.primary_role === 'Doctor') {
+      const response = await api.get(
+        API_ENDPOINTS.ACCOUNTS.BASE +
+          API_ENDPOINTS.ACCOUNTS.ME +
+          API_ENDPOINTS.ACCOUNTS.DOCTOR_PROFILE,
+      )
+      doctorProfile.value = response.data
+      return doctorProfile.value
+    }
+
+    if (user.value.primary_role === 'Patient') {
+      const response = await api.get(
+        API_ENDPOINTS.ACCOUNTS.BASE +
+          API_ENDPOINTS.ACCOUNTS.ME +
+          API_ENDPOINTS.ACCOUNTS.PATIENT_PROFILE,
+      )
+      patientProfile.value = response.data
+      return patientProfile.value
+    }
+
+    return null
+  }
+
   const checkSession = async () => {
     isLoading.value = true
-    
+
     // Clean up legacy localStorage items from old auth flow
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
@@ -41,10 +89,12 @@ export const useAuth = () => {
       const newAccessToken = response.data.access || response.data.access_token || response.data
       setAccessToken(newAccessToken)
 
-      const userRes = await api.get('/accounts/me/')
+      const userRes = await api.get(API_ENDPOINTS.ACCOUNTS.BASE + API_ENDPOINTS.ACCOUNTS.ME)
       user.value = userRes.data
-    } catch (error) {
+      await getCurrentUserProfile()
+    } catch {
       user.value = null
+      resetRoleProfiles()
       setAccessToken(null)
     } finally {
       isInitialized.value = true
@@ -59,9 +109,10 @@ export const useAuth = () => {
       const response = await api.post('/accounts/login/', { username, password })
       const newAccessToken = response.data.access || response.data.access_token || response.data
       setAccessToken(newAccessToken)
-      
-      const userRes = await api.get('/accounts/me/')
+
+      const userRes = await api.get(API_ENDPOINTS.ACCOUNTS.BASE + API_ENDPOINTS.ACCOUNTS.ME)
       user.value = userRes.data
+      await getCurrentUserProfile()
       return user.value
     } finally {
       isLoading.value = false
@@ -72,52 +123,12 @@ export const useAuth = () => {
     isLoading.value = true
     try {
       const response = await api.post('/accounts/register/', userData)
-      return response.data
-    } finally {
-      isLoading.value = false
-    }
-  }
+      const newAccessToken = response.data.access || response.data.access_token || response.data
+      setAccessToken(newAccessToken)
 
-  const verifyEmail = async (uid, token) => {
-    isLoading.value = true
-    try {
-      const response = await api.post('/accounts/verify-email/', { uid, token })
-      return response.data
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  const resendVerificationEmail = async (email) => {
-    isLoading.value = true
-    try {
-      const response = await api.post('/accounts/resend-verification-email/', { email })
-      return response.data
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  const forgotPassword = async (email) => {
-    isLoading.value = true
-    try {
-      const response = await api.post('/accounts/forgot-password/', { email })
-      return response.data
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  const resetPassword = async (uid, token, new_password, new_password_confirm) => {
-    isLoading.value = true
-    try {
-      const response = await api.post('/accounts/reset-password/', {
-        uid,
-        token,
-        new_password,
-        new_password_confirm
-      })
-      return response.data
+      const userRes = await api.get('/accounts/me/')
+      user.value = userRes.data
+      return user.value
     } finally {
       isLoading.value = false
     }
@@ -131,13 +142,14 @@ export const useAuth = () => {
     } finally {
       setAccessToken(null)
       user.value = null
+      resetRoleProfiles()
       clearAuthQueue()
       window.location.href = '/login'
     }
   }
 
   const loginWithSocial = () => {
-    console.warn("Social login not implemented.")
+    console.warn('Social login not implemented.')
   }
 
   const updateAccount = async (data) => {
@@ -214,6 +226,9 @@ export const useAuth = () => {
     isLoading,
     authReady,
     isAuthenticated,
+    doctorProfile,
+    patientProfile,
+    activeProfileId,
     checkSession,
     login,
     register,
@@ -230,5 +245,6 @@ export const useAuth = () => {
     getDoctorProfile,
     updateDoctorProfile,
     getUserRole,
+    getCurrentUserProfile,
   }
 }

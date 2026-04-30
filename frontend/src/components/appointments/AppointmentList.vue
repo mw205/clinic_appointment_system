@@ -14,6 +14,14 @@ defineProps({
     type: String,
     default: "No appointments found.",
   },
+  canStartConsultation: {
+    type: Boolean,
+    default: false,
+  },
+  canViewRecord: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["check-in", "no-show", "complete", "view-record"]);
@@ -33,6 +41,8 @@ const emit = defineEmits(["check-in", "no-show", "complete", "view-record"]);
       :key="appointment.id"
       :appointment="appointment"
       :calculate-wait-time="calculateWaitTime"
+      :can-start-consultation="canStartConsultation"
+      :can-view-record="canViewRecord"
       @check-in="emit('check-in', $event)"
       @no-show="emit('no-show', $event)"
       @complete="emit('complete', $event)"

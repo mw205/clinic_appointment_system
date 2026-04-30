@@ -123,3 +123,19 @@ export const getAvailableSlots = async (params = {}) => {
   const response = await api.get(API_ENDPOINTS.SCHEDULING.AVAILABLE_SLOTS, { params })
   return response.data
 }
+
+export async function getDoctorDailyQueue(params = {})
+{
+  const res = await api.get('/appointments/doctor/queue/', { params })
+  return res.data.data
+}
+
+export async function checkInAppointment(appointment_id)
+{
+  return await api.post(appointmentActionUrl(appointment_id, 'check_in'))
+}
+
+export async function hideAppointment(appointment_id)
+{
+  return await api.post(appointmentActionUrl(appointment_id, 'hide'))
+}

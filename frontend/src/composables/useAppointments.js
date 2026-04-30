@@ -1,9 +1,12 @@
 import { computed, ref } from "vue";
 
-export function useAppointments(dailyQueue) {
+export function useAppointments(dailyQueue, options = {}) {
+  const { includeDoctorNameFilter = false } = options;
+
   const filters = ref({
     status: "all",
     patientName: "",
+    doctorName: "",
     startDate: "",
     endDate: "",
   });
@@ -25,6 +28,7 @@ export function useAppointments(dailyQueue) {
   const hasActiveFilters = computed(() =>
     filters.value.status !== "all"
     || filters.value.patientName.trim() !== ""
+    || (includeDoctorNameFilter && filters.value.doctorName.trim() !== "")
     || filters.value.startDate !== ""
     || filters.value.endDate !== "",
   );
@@ -38,6 +42,10 @@ export function useAppointments(dailyQueue) {
 
     if (filters.value.patientName.trim()) {
       params.patient_name = filters.value.patientName.trim();
+    }
+
+    if (includeDoctorNameFilter && filters.value.doctorName.trim()) {
+      params.doctor_name = filters.value.doctorName.trim();
     }
 
     if (filters.value.startDate) {
@@ -55,6 +63,7 @@ export function useAppointments(dailyQueue) {
     filters.value = {
       status: "all",
       patientName: "",
+      doctorName: "",
       startDate: "",
       endDate: "",
     };

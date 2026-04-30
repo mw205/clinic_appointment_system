@@ -61,6 +61,11 @@ const router = createRouter({
           component: () => import('@/views/receptionist/ReceptionistScheduleDashboard.vue'),
         },
         {
+          path: '/receptionist/queue',
+          name: 'ReceptionistQueueManagement',
+          component: () => import('@/views/receptionist/DailyQueue.vue'),
+        },
+        {
           path: '/patient/dashboard',
           name: 'PatientDashboard',
           component: () => import('@/views/patient/PatientDashboardView.vue'),
@@ -188,7 +193,7 @@ const router = createRouter({
 
 router.beforeEach(async (to, from) => {
   const { user, authReady, checkSession } = useAuth()
-  
+
   if (!authReady.value) {
     await checkSession()
   }

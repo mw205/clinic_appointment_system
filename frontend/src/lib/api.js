@@ -4,7 +4,7 @@ export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 5000,
   headers: { Accept: 'application/json' },
-  withCredentials: true
+  withCredentials: true,
 })
 
 let accessToken = null
@@ -28,7 +28,7 @@ api.interceptors.request.use(
     console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`, config.data || '')
     return config
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 )
 
 api.interceptors.response.use(
@@ -53,7 +53,7 @@ api.interceptors.response.use(
 
       // Handle Concurrent 401 Requests
       if (isRefreshing) {
-        return new Promise(function(resolve, reject) {
+        return new Promise(function (resolve, reject) {
           refreshQueue.push((token) => {
             if (token) {
               originalRequest.headers.Authorization = `Bearer ${token}`
@@ -70,25 +70,25 @@ api.interceptors.response.use(
       try {
         const response = await api.post('/accounts/refresh/')
         const newAccessToken = response.data.access || response.data.access_token || response.data
-        
+
         setAccessToken(newAccessToken)
 
         // Replay queued requests
-        refreshQueue.forEach(cb => cb(newAccessToken))
+        refreshQueue.forEach((cb) => cb(newAccessToken))
         refreshQueue = []
 
         // Retry original request
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return api(originalRequest)
       } catch (refreshError) {
-        refreshQueue.forEach(cb => cb(null))
+        refreshQueue.forEach((cb) => cb(null))
         refreshQueue = []
         setAccessToken(null)
-        
+
         // Import useAuth lazily to avoid circular dependency
         const { useAuth } = await import('@/composables/useAuth')
         useAuth().logout()
-        
+
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false
@@ -98,12 +98,12 @@ api.interceptors.response.use(
     if (error.response) {
       console.error(
         `[API Error] ${error.response.status} ${error.response.config.url}`,
-        error.response.data || ''
+        error.response.data || '',
       )
     } else {
       console.error('[API Error] Network Error')
     }
 
     return Promise.reject(error)
-  }
+  },
 )

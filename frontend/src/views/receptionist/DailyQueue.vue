@@ -4,8 +4,7 @@ import QueueView from "@/views/shared/QueueView.vue";
 
 <template>
   <QueueView
-    mode="doctor"
+    mode="receptionist"
     title="Today's Schedule"
-    :can-start-consultation="true"
   />
 </template>

@@ -17,34 +17,22 @@
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div class="space-y-2">
             <Label for="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="Enter your username"
-              v-model="username"
-              required
-              :disabled="isLoading"
-            />
+            <Input id="username" type="text" placeholder="Enter your username" v-model="username" required
+              :disabled="isLoading" />
           </div>
           <div class="space-y-2">
             <Label for="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              v-model="password"
-              required
-              :disabled="isLoading"
-            />
+            <Input id="password" type="password" placeholder="••••••••" v-model="password" required
+              :disabled="isLoading" />
           </div>
           <Button type="submit" class="w-full bg-blue-600 hover:bg-blue-700" :disabled="isLoading">
             {{ isLoading ? 'Signing in...' : 'Sign In' }}
           </Button>
-          
+
           <div v-if="errorMessage" class="text-red-500 text-sm text-center mt-2">
             {{ errorMessage }}
           </div>
-          
+
           <div v-if="isUnverified" class="text-center mt-2">
             <Button type="button" variant="link" @click="handleResendVerification" :disabled="isResending" class="text-blue-600 p-0 h-auto font-normal">
               {{ isResending ? 'Sending...' : 'Resend verification email' }}
@@ -67,11 +55,8 @@
 
         <div class="text-center text-sm">
           <span class="text-gray-500">Don't have an account? </span>
-          <button
-            @click="router.push('/signup')"
-            class="text-blue-600 hover:underline font-medium"
-            :disabled="isLoading"
-          >
+          <button @click="router.push('/signup')" class="text-blue-600 hover:underline font-medium"
+            :disabled="isLoading">
             Sign up
           </button>
         </div>
@@ -85,9 +70,6 @@ import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { getDefaultRouteForRole, useAuth } from "@/composables/useAuth";
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Activity } from "lucide-vue-next";
 
@@ -121,7 +103,7 @@ const handleLogin = async () => {
   } catch (error) {
     const data = error.response?.data;
     const dataErrors = data?.errors || data?.details;
-    
+
     if (dataErrors) {
         const errors = [];
         for (const [key, val] of Object.entries(dataErrors)) {
@@ -140,9 +122,9 @@ const handleLogin = async () => {
             isUnverified.value = true;
         }
     } else if (data?.message) {
-        errorMessage.value = data.message;
+      errorMessage.value = data.message;
     } else {
-        errorMessage.value = "Invalid credentials. Please try again.";
+      errorMessage.value = "Invalid credentials. Please try again.";
     }
   } finally {
     isLoading.value = false;
@@ -155,7 +137,7 @@ const handleResendVerification = async () => {
   resendMessage.value = "";
   errorMessage.value = "";
   try {
-    // Note: The backend expects email, but login uses username. 
+    // Note: The backend expects email, but login uses username.
     // We will assume the backend might be able to handle username, or we will just send it as email.
     // Wait, the backend resend-verification-email endpoint explicitly takes 'email'.
     // If the user logs in with username, we don't have their email.
