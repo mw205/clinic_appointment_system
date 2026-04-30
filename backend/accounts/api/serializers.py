@@ -13,8 +13,6 @@ from django.db import transaction
 from accounts.models import DoctorProfile, PatientProfile, User
 
 
-
-
 class UserModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -43,14 +41,12 @@ class PatientProfileModelSerializer(serializers.ModelSerializer):
 
     def validate_date_of_birth(self, value):
         if value > date.today():
-            raise serializers.ValidationError(
-                "Date of birth cannot be in the future.")
+            raise serializers.ValidationError("Date of birth cannot be in the future.")
         return value
 
     def validate_blood_type(self, value):
         if value not in ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]:
-            raise serializers.ValidationError(
-                "Invalid blood type.")
+            raise serializers.ValidationError("Invalid blood type.")
         return value
 
 
@@ -91,10 +87,10 @@ class UserSummarySerializer(serializers.ModelSerializer):
         ]
 
     def get_groups(self, obj):
-        return list(obj.groups.values_list('name', flat=True))
-    
+        return list(obj.groups.values_list("name", flat=True))
+
     def get_primary_role(self, obj):
-        groups = list(obj.groups.values_list('name', flat=True))
+        groups = list(obj.groups.values_list("name", flat=True))
         return groups[0] if groups else None
 
     def get_profile_id(self, obj):
@@ -107,35 +103,32 @@ class UserSummarySerializer(serializers.ModelSerializer):
             return doctor_profile.id
 
         return None
-        
+
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        username = attrs.get('username')
-        password = attrs.get('password')
+        username = attrs.get("username")
+        password = attrs.get("password")
 
-        request = self.context.get('request')
+        request = self.context.get("request")
         user = authenticate(request=request, username=username, password=password)
 
         if not user:
-            raise serializers.ValidationError(
-                'Invalid username or password.')
-        
+            raise serializers.ValidationError("Invalid username or password.")
+
         if not user.is_active:
-            raise serializers.ValidationError(
-                'User account is inactive.')
-        
-        attrs['user'] = user
+            raise serializers.ValidationError("User account is inactive.")
+
+        attrs["user"] = user
         return attrs
-    
+
 
 class CurrentUserSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     primary_role = serializers.SerializerMethodField()
-    profile_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -152,10 +145,10 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         ]
 
     def get_groups(self, obj):
-        return list(obj.groups.values_list('name', flat=True))
-    
+        return list(obj.groups.values_list("name", flat=True))
+
     def get_primary_role(self, obj):
-        groups = list(obj.groups.values_list('name', flat=True))
+        groups = list(obj.groups.values_list("name", flat=True))
         return groups[0] if groups else None
 
     def get_profile_id(self, obj):
@@ -168,7 +161,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             return doctor_profile.id
 
         return None
-    
+
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
@@ -183,8 +176,8 @@ class LogoutSerializer(serializers.Serializer):
 
 
         except TokenError:
-            raise serializers.ValidationError('Invalid or expired token.')
-        
+            raise serializers.ValidationError("Invalid or expired token.")
+
 
 class PatientRegistrationSerializer(serializers.Serializer):
     # User fields
@@ -199,14 +192,14 @@ class PatientRegistrationSerializer(serializers.Serializer):
     # PatientProfile fields
     date_of_birth = serializers.DateField()
     blood_type = serializers.ChoiceField(
-    choices=[
-        "A+", "A-", "B+", "B-",
-        "AB+", "AB-", "O+", "O-"
-    ])
-    gender = serializers.ChoiceField(choices=[
-    ("male", "Male"),
-    ("female", "Female"),
-    ])
+        choices=["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+    )
+    gender = serializers.ChoiceField(
+        choices=[
+            ("male", "Male"),
+            ("female", "Female"),
+        ]
+    )
 
     # Field-level validation
     def validate_first_name(self, value):
@@ -218,37 +211,35 @@ class PatientRegistrationSerializer(serializers.Serializer):
         if not value.strip():
             raise serializers.ValidationError("This field cannot be empty.")
         return value.strip()
-    
+
     def validate_username(self, value):
         value = value.strip()
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError("Username is already taken.")
         return value
-    
+
     def validate_email(self, value):
         value = value.strip().lower()
 
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email is already registered.")
         return value
-    
+
     def validate_date_of_birth(self, value):
         if value > date.today():
             raise serializers.ValidationError("Date of birth cannot be in the future.")
         return value
-    
-    
+
     def validate_phone_number(self, value):
         value = value.strip()
 
         # check format
-        if not re.fullmatch(r'^\+?\d+$', value):
+        if not re.fullmatch(r"^\+?\d+$", value):
             raise serializers.ValidationError(
                 "Phone number must contain only digits and optional leading '+'."
             )
 
-        
-        digits_only = value.lstrip('+')
+        digits_only = value.lstrip("+")
 
         # validate digit length only
         if len(digits_only) < 10 or len(digits_only) > 15:
@@ -257,40 +248,33 @@ class PatientRegistrationSerializer(serializers.Serializer):
             )
 
         return value
-    
 
-    
     # Object-level validation
     def validate(self, attrs):
-        password = attrs.get('password')
-        password_confirm = attrs.get('password_confirm')
+        password = attrs.get("password")
+        password_confirm = attrs.get("password_confirm")
 
         if password != password_confirm:
-            raise serializers.ValidationError({
-                'password_confirm': "Password confirmation does not match password."
-            })
-        
-        user = User(
-        username=attrs.get("username"),
-        email=attrs.get("email"),
-        first_name=attrs.get("first_name"),
-        last_name=attrs.get("last_name"),
+            raise serializers.ValidationError(
+                {"password_confirm": "Password confirmation does not match password."}
             )
 
-        
-        
+        user = User(
+            username=attrs.get("username"),
+            email=attrs.get("email"),
+            first_name=attrs.get("first_name"),
+            last_name=attrs.get("last_name"),
+        )
+
         try:
             validate_password(password, user=user)
         except DjangoValidationError as e:
-            raise serializers.ValidationError({
-                'password': list(e.messages)
-            })
-        
+            raise serializers.ValidationError({"password": list(e.messages)})
+
         return attrs
-    
 
     def create(self, validated_data):
-        validated_data.pop('password_confirm')
+        validated_data.pop("password_confirm")
 
         user_data = {
             "username": validated_data.pop("username"),
@@ -305,14 +289,16 @@ class PatientRegistrationSerializer(serializers.Serializer):
 
         with transaction.atomic():
             user = User.objects.create_user(**user_data)
-            
+
             try:
-                patient_group = Group.objects.get(name='Patient')
+                patient_group = Group.objects.get(name="Patient")
             except Group.DoesNotExist:
-                raise serializers.ValidationError({
-                    'detail': "Patient group does not exist. Please contact administrator."
-                })
-            
+                raise serializers.ValidationError(
+                    {
+                        "detail": "Patient group does not exist. Please contact administrator."
+                    }
+                )
+
             user.groups.add(patient_group)
 
             PatientProfile.objects.create(user=user, **profile_data)
@@ -335,9 +321,8 @@ class CurrentUserUpdateSerializer(serializers.Serializer):
         if not value.strip():
             raise serializers.ValidationError("This field cannot be empty.")
         return value.strip()
-    
 
-    def validate_email(self,value):
+    def validate_email(self, value):
         value = value.strip().lower()
 
         request = self.context.get("request")
@@ -346,8 +331,7 @@ class CurrentUserUpdateSerializer(serializers.Serializer):
         if User.objects.filter(email=value).exclude(id=user.id).exists():
             raise serializers.ValidationError("Email is already registered.")
         return value
-    
-    
+
     def validate_phone_number(self, value):
         value = value.strip()
 
@@ -355,25 +339,28 @@ class CurrentUserUpdateSerializer(serializers.Serializer):
         user = request.user if request else None
 
         # check format
-        if not re.fullmatch(r'^\+?\d+$', value):
+        if not re.fullmatch(r"^\+?\d+$", value):
             raise serializers.ValidationError(
                 "Phone number must contain only digits and optional leading '+'."
             )
 
-        
-        digits_only = value.lstrip('+')
+        digits_only = value.lstrip("+")
 
         # validate digit length only
         if len(digits_only) < 10 or len(digits_only) > 15:
             raise serializers.ValidationError(
                 "Phone number must be between 10 and 15 digits."
             )
-        
-        normalized_phone = '+' + digits_only if value.startswith('+') else digits_only
 
-        if User.objects.filter(phone_number=normalized_phone).exclude(id=user.id).exists():
+        normalized_phone = "+" + digits_only if value.startswith("+") else digits_only
+
+        if (
+            User.objects.filter(phone_number=normalized_phone)
+            .exclude(id=user.id)
+            .exists()
+        ):
             raise serializers.ValidationError("Phone number is already registered.")
-        
+
         return normalized_phone
 
     def update(self, instance, validated_data):
@@ -383,7 +370,7 @@ class CurrentUserUpdateSerializer(serializers.Serializer):
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
+
         instance.save(update_fields=list(validated_data.keys()))
         return instance
 
@@ -400,21 +387,21 @@ class ChangePasswordSerializer(serializers.Serializer):
         new_password_confirm = attrs.get("new_password_confirm")
 
         if not user.check_password(current_password):
-            raise serializers.ValidationError({
-                "current_password": "Current password is incorrect."
-            })
+            raise serializers.ValidationError(
+                {"current_password": "Current password is incorrect."}
+            )
 
         if new_password != new_password_confirm:
-            raise serializers.ValidationError({
-                "new_password_confirm": "Password confirmation does not match password."
-            })
+            raise serializers.ValidationError(
+                {
+                    "new_password_confirm": "Password confirmation does not match password."
+                }
+            )
 
         try:
             validate_password(new_password, user=user)
         except DjangoValidationError as e:
-            raise serializers.ValidationError({
-                "new_password": list(e.messages)
-            })
+            raise serializers.ValidationError({"new_password": list(e.messages)})
 
         return attrs
 
@@ -423,27 +410,24 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data["new_password"])
         user.save(update_fields=["password"])
         return user
-    
+
 
 class CurrentPatientProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = PatientProfile
         fields = [
+            "id",
             "date_of_birth",
             "blood_type",
-            "gender",   
-            ]
+            "gender",
+        ]
 
 
 class CurrentPatientProfileUpdateSerializer(serializers.Serializer):
     date_of_birth = serializers.DateField(required=False)
     blood_type = serializers.ChoiceField(
-    choices=[
-        "A+", "A-", "B+", "B-",
-        "AB+", "AB-", "O+", "O-"
-    ],
-    required=False
-)
+        choices=["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], required=False
+    )
     gender = serializers.ChoiceField(
         choices=[
             ("male", "Male"),
@@ -453,51 +437,52 @@ class CurrentPatientProfileUpdateSerializer(serializers.Serializer):
     )
 
     def validate_date_of_birth(self, value):
-        
+
         if value > date.today():
             raise serializers.ValidationError("Date of birth cannot be in the future.")
 
         return value
 
     def update(self, instance, validated_data):
-        
+
         if not validated_data:
             raise serializers.ValidationError("No data provided for update.")
-        
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
         instance.save(update_fields=list(validated_data.keys()))
         return instance
-    
+
 
 class CurrentDoctorProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = DoctorProfile
         fields = [
+            "id",
             "specialization",
         ]
+
 
 class CurrentDoctorProfileUpdateSerializer(serializers.Serializer):
     specialization = serializers.CharField(required=False)
 
     def validate_specialization(self, value):
         if value.strip() == "":
-            raise serializers.ValidationError(
-                "Specialization cannot be empty.")
+            raise serializers.ValidationError("Specialization cannot be empty.")
         return value.strip()
 
     def update(self, instance, validated_data):
-        
+
         if not validated_data:
             raise serializers.ValidationError("No data provided for update.")
-        
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
         instance.save(update_fields=list(validated_data.keys()))
         return instance
-    
+
 
 class StaffUserSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
@@ -514,29 +499,27 @@ class StaffUserSerializer(serializers.ModelSerializer):
             "phone_number",
             "is_active",
             "primary_role",
-            "groups"
+            "groups",
         ]
-    
+
     def get_groups(self, obj):
-        return list(obj.groups.values_list('name', flat=True))
-    
+        return list(obj.groups.values_list("name", flat=True))
+
     def get_primary_role(self, obj):
-        groups = list(obj.groups.values_list('name', flat=True))
-        
+        groups = list(obj.groups.values_list("name", flat=True))
+
         role_priority = ["Admin", "Receptionist", "Doctor", "Patient"]
 
         for role in role_priority:
             if role in groups:
                 return role
-        
+
         return None
-    
+
+
 class StaffUserUpdateSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(required=False)
-    groups = serializers.ListField(
-        child=serializers.CharField(), 
-        required=False
-    )
+    groups = serializers.ListField(child=serializers.CharField(), required=False)
 
     def validate_groups(self, value):
 
@@ -551,33 +534,26 @@ class StaffUserUpdateSerializer(serializers.Serializer):
         if len(groups) != len(unique_names):
             existing_names = {g.name for g in groups}
             invalid = set(unique_names) - existing_names
-            raise serializers.ValidationError(
-                f"Invalid groups: {', '.join(invalid)}"
-            )
+            raise serializers.ValidationError(f"Invalid groups: {', '.join(invalid)}")
 
-       
         return groups
-    
+
     def validate(self, attrs):
         if not attrs:
-            raise serializers.ValidationError(
-                "No data provided for update."
-            )
+            raise serializers.ValidationError("No data provided for update.")
         return attrs
-    
 
     def update(self, instance, validated_data):
         update_fields = []
 
-        if 'is_active' in validated_data:
-            instance.is_active = validated_data['is_active']
-            update_fields.append('is_active')
+        if "is_active" in validated_data:
+            instance.is_active = validated_data["is_active"]
+            update_fields.append("is_active")
 
-        if 'groups' in validated_data:
-            instance.groups.set(validated_data['groups'])
-        
+        if "groups" in validated_data:
+            instance.groups.set(validated_data["groups"])
+
         if update_fields:
             instance.save(update_fields=update_fields)
-        
 
-        return instance 
+        return instance

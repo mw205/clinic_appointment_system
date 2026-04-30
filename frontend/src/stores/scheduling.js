@@ -1,14 +1,20 @@
+import { useAuth } from '@/composables/useAuth'
 import * as scheduleService from '@/services/schedule_service'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export const useScheduleStore = defineStore('schedule', () => {
+  const auth = useAuth()
+
   const doctors = ref([])
   const selectedDoctorId = ref(null)
+  const currentDoctorId = computed(() => auth.activeProfileId?.value ?? null)
   const schedules = ref([])
+  const currentDoctorSchedules = ref([])
   const exceptions = ref([])
   const availableSlots = ref([])
   const loadingDoctors = ref(false)
+  const loadingCurrentDoctorSchedules = ref(false)
   const loadingSchedules = ref(false)
   const loadingExceptions = ref(false)
   const loadingAvailableSlots = ref(false)
@@ -45,6 +51,28 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
+  const loadCurrentDoctorSchedule = async () => {
+    if (!currentDoctorId.value) {
+      currentDoctorSchedules.value = []
+      return currentDoctorSchedules.value
+    }
+
+    loadingCurrentDoctorSchedules.value = true
+    error.value = null
+
+    try {
+      currentDoctorSchedules.value = await scheduleService.getSchedules({
+        doctor: currentDoctorId.value,
+      })
+      return currentDoctorSchedules.value
+    } catch (e) {
+      error.value = e
+      throw e
+    } finally {
+      loadingCurrentDoctorSchedules.value = false
+    }
+  }
+
   const createSchedule = async (payload) => {
     submitting.value = true
     error.value = null
@@ -52,6 +80,9 @@ export const useScheduleStore = defineStore('schedule', () => {
     try {
       const createdSchedule = await scheduleService.createSchedule(payload)
       await loadSchedules({ doctor: payload.doctor_id })
+      if (Number(payload.doctor_id) === Number(currentDoctorId.value)) {
+        currentDoctorSchedules.value = [...schedules.value]
+      }
       return createdSchedule
     } catch (e) {
       error.value = e
@@ -68,6 +99,9 @@ export const useScheduleStore = defineStore('schedule', () => {
     try {
       const updatedSchedule = await scheduleService.updateSchedule(id, payload)
       await loadSchedules({ doctor: payload.doctor_id })
+      if (Number(payload.doctor_id) === Number(currentDoctorId.value)) {
+        currentDoctorSchedules.value = [...schedules.value]
+      }
       return updatedSchedule
     } catch (e) {
       error.value = e
@@ -87,6 +121,9 @@ export const useScheduleStore = defineStore('schedule', () => {
         await loadSchedules({ doctor: doctorId })
       } else {
         await loadSchedules()
+      }
+      if (Number(doctorId) === Number(currentDoctorId.value)) {
+        currentDoctorSchedules.value = [...schedules.value]
       }
     } catch (e) {
       error.value = e
@@ -180,10 +217,13 @@ export const useScheduleStore = defineStore('schedule', () => {
   return {
     doctors,
     selectedDoctorId,
+    currentDoctorId,
     schedules,
+    currentDoctorSchedules,
     exceptions,
     availableSlots,
     loadingDoctors,
+    loadingCurrentDoctorSchedules,
     loadingSchedules,
     loadingExceptions,
     loadingAvailableSlots,
@@ -191,6 +231,7 @@ export const useScheduleStore = defineStore('schedule', () => {
     error,
     loadDoctors,
     loadSchedules,
+    loadCurrentDoctorSchedule,
     createSchedule,
     editSchedule,
     removeSchedule,

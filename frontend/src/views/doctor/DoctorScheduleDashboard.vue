@@ -1,7 +1,4 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { toast } from 'vue-sonner'
 import ExceptionForm from '@/components/scheduling/ExceptionForm.vue'
 import SlotsViewer from '@/components/scheduling/SlotsViewer.vue'
 import WeeklyScheduleForm from '@/components/scheduling/WeeklyScheduleForm.vue'
@@ -20,15 +17,19 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/composables/useAuth'
 import { useScheduleStore } from '@/stores/scheduling'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
 
 const store = useScheduleStore()
-const { user } = useAuth()
+const { user, activeProfileId, getCurrentUserProfile } = useAuth()
 const {
   selectedDoctorId,
-  schedules,
+  currentDoctorSchedules,
   exceptions,
   availableSlots,
-  loadingSchedules,
+  currentDoctorId,
+  loadingCurrentDoctorSchedules,
   loadingExceptions,
   loadingAvailableSlots,
   submitting,
@@ -54,7 +55,9 @@ const belongsToDoctor = (record, doctorId) => {
 }
 
 const visibleSchedules = computed(() => {
-  return schedules.value.filter((schedule) => belongsToDoctor(schedule, selectedDoctorId.value))
+  return currentDoctorSchedules.value.filter((schedule) =>
+    belongsToDoctor(schedule, selectedDoctorId.value),
+  )
 })
 
 const visibleExceptions = computed(() => {
@@ -84,7 +87,7 @@ const loadDoctorData = async () => {
   }
 
   await Promise.all([
-    store.loadSchedules({ doctor: selectedDoctorId.value }),
+    store.loadCurrentDoctorSchedule(),
     store.loadExceptions({ doctor_id: selectedDoctorId.value }),
   ])
 }
@@ -159,7 +162,7 @@ const handleLoadSlots = async ({ doctor_id, date }) => {
 }
 
 watch(
-  () => user.value?.id,
+  () => activeProfileId.value,
   async (doctorId) => {
     if (!doctorId) {
       return
@@ -173,8 +176,12 @@ watch(
 )
 
 onMounted(async () => {
-  if (!selectedDoctorId.value && user.value?.id) {
-    selectedDoctorId.value = user.value.id
+  if (user.value?.primary_role === 'Doctor' && !activeProfileId.value) {
+    await getCurrentUserProfile()
+  }
+
+  if (!selectedDoctorId.value && activeProfileId.value) {
+    selectedDoctorId.value = activeProfileId.value
     await loadDoctorData()
   }
 })
@@ -182,21 +189,6 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto flex max-w-6xl flex-col gap-6">
-    <Card>
-      <CardHeader>
-        <CardTitle>Doctor Schedule Dashboard</CardTitle>
-        <CardDescription>
-          Manage your recurring weekly schedule, one-off availability changes, and bookable slots.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-          <p class="font-medium text-foreground">{{ doctorName }}</p>
-          <p>Use the weekly schedule tab to define your standard working hours.</p>
-        </div>
-      </CardContent>
-    </Card>
-
     <Tabs default-value="weekly-schedule">
       <TabsList>
         <TabsTrigger value="weekly-schedule">Weekly Schedule</TabsTrigger>
@@ -213,13 +205,8 @@ onMounted(async () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <WeeklyScheduleForm
-              :doctor-id="selectedDoctorId"
-              :initial-value="editingSchedule"
-              :submitting="submitting"
-              @submit="handleSaveSchedule"
-              @cancel="editingSchedule = null"
-            />
+            <WeeklyScheduleForm :doctor-id="selectedDoctorId" :initial-value="editingSchedule" :submitting="submitting"
+              @submit="handleSaveSchedule" @cancel="editingSchedule = null" />
           </CardContent>
         </Card>
 
@@ -252,18 +239,14 @@ onMounted(async () => {
                       <Button size="sm" variant="outline" @click="editingSchedule = schedule">
                         Edit
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        :disabled="submitting"
-                        @click="handleDeleteSchedule(schedule.id)"
-                      >
+                      <Button size="sm" variant="destructive" :disabled="submitting"
+                        @click="handleDeleteSchedule(schedule.id)">
                         Delete
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-                <TableEmpty v-if="!loadingSchedules && !visibleSchedules.length">
+                <TableEmpty v-if="!loadingCurrentDoctorSchedules && !visibleSchedules.length">
                   No recurring weekly schedules found for your account.
                 </TableEmpty>
               </TableBody>
@@ -281,13 +264,8 @@ onMounted(async () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ExceptionForm
-              :doctor-id="selectedDoctorId"
-              :initial-value="editingException"
-              :submitting="submitting"
-              @submit="handleSaveException"
-              @cancel="editingException = null"
-            />
+            <ExceptionForm :doctor-id="selectedDoctorId" :initial-value="editingException" :submitting="submitting"
+              @submit="handleSaveException" @cancel="editingException = null" />
           </CardContent>
         </Card>
 
@@ -326,12 +304,8 @@ onMounted(async () => {
                       <Button size="sm" variant="outline" @click="editingException = exception">
                         Edit
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        :disabled="submitting"
-                        @click="handleDeleteException(exception.id)"
-                      >
+                      <Button size="sm" variant="destructive" :disabled="submitting"
+                        @click="handleDeleteException(exception.id)">
                         Delete
                       </Button>
                     </div>
@@ -347,12 +321,8 @@ onMounted(async () => {
       </TabsContent>
 
       <TabsContent value="slots">
-        <SlotsViewer
-          :doctor-id="selectedDoctorId"
-          :slots="availableSlots"
-          :loading="loadingAvailableSlots"
-          @load-slots="handleLoadSlots"
-        />
+        <SlotsViewer :doctor-id="selectedDoctorId" :slots="availableSlots" :loading="loadingAvailableSlots"
+          @load-slots="handleLoadSlots" />
       </TabsContent>
     </Tabs>
   </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { WEEKDAYS, defaultWeeklyScheduleForm } from '@/components/scheduling/models'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { WEEKDAYS, defaultWeeklyScheduleForm } from '@/components/scheduling/models'
+import { computed, reactive, watch } from 'vue'
 
 const props = defineProps({
   doctorId: {
@@ -48,6 +48,7 @@ const populateForm = (value) => {
     end_time: value?.end_time ? value.end_time.slice(0, 5) : '',
     target_date: value?.target_date ?? '',
   })
+  console.log("form:", form);
 }
 
 const resetErrors = () => {
@@ -207,13 +208,7 @@ const weekdayLabel = (day) => day.charAt(0).toUpperCase() + day.slice(1)
     </div>
 
     <div class="flex items-center justify-end gap-2">
-      <Button
-        v-if="isEditMode"
-        type="button"
-        variant="outline"
-        :disabled="submitting"
-        @click="handleCancel"
-      >
+      <Button v-if="isEditMode" type="button" variant="outline" :disabled="submitting" @click="handleCancel">
         Cancel
       </Button>
       <Button type="submit" :disabled="submitting || !doctorId">

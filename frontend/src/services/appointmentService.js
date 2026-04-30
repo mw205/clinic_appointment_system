@@ -10,28 +10,30 @@ const stripErrorDetailWrappers = (value) => {
   return value.replace(/ErrorDetail\(string='([^']*)',\s*code='[^']*'\)/g, '$1')
 }
 
+const extractKeyValue = (source, key) => {
+  const quotedValuePattern = new RegExp(`['"]${key}['"]:\\s*['"]([^'"]+)['"]`)
+  const looseValuePattern = new RegExp(`['"]${key}['"]:\\s*([^,}\\]]+)`)
+
+  return quotedValuePattern.exec(source)?.[1]
+    || looseValuePattern.exec(source)?.[1]?.trim()
+    || ''
+}
+
 const extractErrorDetailString = (value) => {
   if (isHtmlResponse(value)) {
     return ''
   }
 
   const cleanedValue = stripErrorDetailWrappers(value)
-  const messageMatch = cleanedValue.match(/['"]message['"]:\s*['"]([^'"]+)['"]/)
-  const unquotedMessageMatch = cleanedValue.match(/['"]message['"]:\s*([^}]+)/)
-  const detailMatch = cleanedValue.match(/['"]detail['"]:\s*['"]([^'"]+)['"]/)
-  const unquotedDetailMatch = cleanedValue.match(/['"]detail['"]:\s*([^}]+)/)
-  const errorMatch = cleanedValue.match(/['"]error['"]:\s*['"]([^'"]+)['"]/)
-  const unquotedErrorMatch = cleanedValue.match(/['"]error['"]:\s*([^,}]+)/)
 
-  return (
-    messageMatch?.[1]
-    || unquotedMessageMatch?.[1]?.trim()
-    || detailMatch?.[1]
-    || unquotedDetailMatch?.[1]?.trim()
-    || errorMatch?.[1]
-    || unquotedErrorMatch?.[1]?.trim()
-    || cleanedValue
-  )
+  for (const key of ['message', 'detail', 'error']) {
+    const extracted = extractKeyValue(cleanedValue, key)
+    if (extracted) {
+      return extracted
+    }
+  }
+
+  return cleanedValue
 }
 
 const normalizeErrorValue = (value) => {

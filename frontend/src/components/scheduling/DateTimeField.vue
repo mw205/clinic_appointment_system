@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { parseDate } from '@internationalized/date'
 import { Calendar as CalendarIcon } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
@@ -52,6 +52,49 @@ const props = defineProps({
 const emit = defineEmits(['update:dateValue', 'update:timeValue'])
 
 const popoverOpen = ref(false)
+const validationError = ref('')
+
+const getNow = () => new Date()
+
+const isPastDate = (dateValue) => {
+  if (!dateValue) {
+    return false
+  }
+
+  const selectedDate = new Date(`${dateValue}T00:00:00`)
+  const now = getNow()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  return selectedDate < today
+}
+
+const isPastDateTime = (dateValue, timeValue) => {
+  if (!dateValue || !timeValue) {
+    return false
+  }
+
+  const normalizedTime = timeValue.length === 5 ? `${timeValue}:00` : timeValue
+  const selectedDateTime = new Date(`${dateValue}T${normalizedTime}`)
+
+  if (Number.isNaN(selectedDateTime.getTime())) {
+    return false
+  }
+
+  return selectedDateTime < getNow()
+}
+
+const setPastValidationError = () => {
+  validationError.value = showTime.value
+    ? 'Date and time cannot be earlier than the current date and time.'
+    : 'Date cannot be earlier than today.'
+}
+
+const clearValidationError = () => {
+  validationError.value = ''
+}
+
+const showTime = computed(() => props.showTime)
+const effectiveError = computed(() => props.error || validationError.value)
 
 const calendarValue = computed(() => {
   if (!props.dateValue) {
@@ -84,13 +127,41 @@ const formattedDate = computed(() => {
 })
 
 const handleDateSelect = (value) => {
-  emit('update:dateValue', value ? value.toString() : '')
+  const nextDateValue = value ? value.toString() : ''
+
+  if (isPastDate(nextDateValue) || (showTime.value && isPastDateTime(nextDateValue, props.timeValue))) {
+    setPastValidationError()
+    popoverOpen.value = false
+    return
+  }
+
+  clearValidationError()
+  emit('update:dateValue', nextDateValue)
   popoverOpen.value = false
 }
 
 const handleTimeInput = (value) => {
+  if (showTime.value && isPastDateTime(props.dateValue, value)) {
+    setPastValidationError()
+    return
+  }
+
+  clearValidationError()
   emit('update:timeValue', value)
 }
+
+watch(
+  () => [props.dateValue, props.timeValue, props.showTime],
+  ([dateValue, timeValue, nextShowTime]) => {
+    if (isPastDate(dateValue) || (nextShowTime && isPastDateTime(dateValue, timeValue))) {
+      setPastValidationError()
+      return
+    }
+
+    clearValidationError()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -134,8 +205,8 @@ const handleTimeInput = (value) => {
       />
     </div>
 
-    <p v-if="error" class="text-sm text-destructive">
-      {{ error }}
+    <p v-if="effectiveError" class="text-sm text-destructive">
+      {{ effectiveError }}
     </p>
   </div>
 </template>
