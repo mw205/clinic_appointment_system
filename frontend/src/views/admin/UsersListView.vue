@@ -83,16 +83,16 @@
           </table>
         </div>
 
-        <div v-if="totalPages > 1 && !isLoading" class="flex items-center justify-between mt-4 px-2 py-4 border-t">
+        <div v-if="(hasNext || hasPrevious || currentPage > 1) && !isLoading" class="flex items-center justify-between mt-4 px-2 py-4 border-t">
           <div class="text-sm text-gray-500">
-            Showing {{ users.length }} of {{ totalCount }} users
+            Showing <span class="font-medium text-gray-900">{{ users.length }}</span> items on this page (Total: <span class="font-medium text-gray-900">{{ totalCount }}</span>)
           </div>
           <div class="flex gap-2">
-            <Button variant="outline" size="sm" :disabled="currentPage === 1" @click="fetchUsers(currentPage - 1)">
+            <Button variant="outline" size="sm" :disabled="!hasPrevious" @click="fetchUsers(currentPage - 1)">
               Previous
             </Button>
-            <span class="flex items-center px-2 text-sm font-medium">Page {{ currentPage }} of {{ totalPages }}</span>
-            <Button variant="outline" size="sm" :disabled="currentPage >= totalPages" @click="fetchUsers(currentPage + 1)">
+            <span class="flex items-center px-2 text-sm font-medium">Page {{ currentPage }}</span>
+            <Button variant="outline" size="sm" :disabled="!hasNext" @click="fetchUsers(currentPage + 1)">
               Next
             </Button>
           </div>
@@ -120,7 +120,8 @@ const canEdit = computed(() => currentUser.value?.primary_role === 'Admin');
 const users = ref([]);
 const totalCount = ref(0);
 const currentPage = ref(1);
-const totalPages = ref(1);
+const hasNext = ref(false);
+const hasPrevious = ref(false);
 const isLoading = ref(true);
 const error = ref("");
 
@@ -157,12 +158,13 @@ const fetchUsers = async (page = 1) => {
       users.value = data.results;
       totalCount.value = data.count;
       currentPage.value = page;
-      // Defaulting to 10 items per page if PAGE_SIZE isn't in response
-      totalPages.value = Math.ceil(data.count / 10) || 1;
+      hasNext.value = !!data.next;
+      hasPrevious.value = !!data.previous;
     } else {
       users.value = data;
       totalCount.value = data.length;
-      totalPages.value = 1;
+      hasNext.value = false;
+      hasPrevious.value = false;
     }
   } catch (err) {
     error.value = "Failed to load users.";
