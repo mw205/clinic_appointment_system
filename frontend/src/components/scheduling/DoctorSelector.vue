@@ -1,13 +1,13 @@
 <script setup>
-import { computed, onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useScheduleStore } from '@/stores/scheduling'
 import Label from '@/components/ui/label/Label.vue'
 import Select from '@/components/ui/select/Select.vue'
 import SelectContent from '@/components/ui/select/SelectContent.vue'
 import SelectItem from '@/components/ui/select/SelectItem.vue'
 import SelectTrigger from '@/components/ui/select/SelectTrigger.vue'
 import SelectValue from '@/components/ui/select/SelectValue.vue'
+import { useScheduleStore } from '@/stores/scheduling'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -31,16 +31,16 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const store = useScheduleStore()
-const { doctors, selectedDoctorId, loadingDoctors } = storeToRefs(store)
+const { doctors, selectedDoctorProfileId, loadingDoctors } = storeToRefs(store)
 
 const selectedValue = computed({
   get() {
-    const value = props.modelValue ?? selectedDoctorId.value
+    const value = props.modelValue ?? selectedDoctorProfileId.value
     return value != null ? String(value) : undefined
   },
   set(value) {
     const normalizedValue = value ? Number(value) : null
-    selectedDoctorId.value = normalizedValue
+    selectedDoctorProfileId.value = normalizedValue
     emit('update:modelValue', normalizedValue)
   },
 })
@@ -67,7 +67,7 @@ onMounted(async () => {
       </SelectTrigger>
 
       <SelectContent>
-        <SelectItem v-for="doctor in doctors" :key="doctor.id" :value="String(doctor.id)">
+        <SelectItem v-for="doctor in doctors" :key="doctor.profile_id" :value="String(doctor.profile_id)">
           {{ doctorLabel(doctor) }}
         </SelectItem>
       </SelectContent>

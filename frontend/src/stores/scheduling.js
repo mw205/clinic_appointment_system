@@ -7,7 +7,7 @@ export const useScheduleStore = defineStore('schedule', () => {
   const auth = useAuth()
 
   const doctors = ref([])
-  const selectedDoctorId = ref(null)
+  const selectedDoctorProfileId = ref(null)
   const currentDoctorId = computed(() => auth.activeProfileId?.value ?? null)
   const schedules = ref([])
   const currentDoctorSchedules = ref([])
@@ -111,7 +111,7 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
-  const removeSchedule = async (id, doctorId = selectedDoctorId.value) => {
+  const removeSchedule = async (id, doctorId = selectedDoctorProfileId.value) => {
     submitting.value = true
     error.value = null
 
@@ -180,7 +180,7 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
-  const removeException = async (id, doctorId = selectedDoctorId.value) => {
+  const removeException = async (id, doctorId = selectedDoctorProfileId.value) => {
     submitting.value = true
     error.value = null
 
@@ -216,7 +216,7 @@ export const useScheduleStore = defineStore('schedule', () => {
 
   return {
     doctors,
-    selectedDoctorId,
+    selectedDoctorProfileId,
     currentDoctorId,
     schedules,
     currentDoctorSchedules,

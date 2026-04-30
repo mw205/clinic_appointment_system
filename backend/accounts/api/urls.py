@@ -6,12 +6,16 @@ from accounts.api.views import (
     ChangePasswordView,
     CurrentPatientProfileView,
     CurrentUserView,
+    CurrentDoctorProfileView,
+    ForgotPasswordView,
     LoginView,
     LogoutView,
     PatientRegistrationView,
     RefreshTokenCookieView,
-    CurrentDoctorProfileView,
-    UserViewSet
+    ResendVerificationEmailView,
+    ResetPasswordView,
+    UserViewSet,
+    VerifyEmailView,
 )
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='users')
@@ -25,6 +29,10 @@ urlpatterns = [
     path('refresh/', RefreshTokenCookieView.as_view(), name='token_refresh'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('register/', PatientRegistrationView.as_view(), name='register'),
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
+    path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
+    path('verify-email/', VerifyEmailView.as_view(), name='verify-email'),
+    path('resend-verification-email/', ResendVerificationEmailView.as_view(), name='resend-verification-email'),
 ]
 
 urlpatterns += router.urls

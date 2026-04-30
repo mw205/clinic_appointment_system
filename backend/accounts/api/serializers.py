@@ -8,6 +8,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth.models import Group
 from django.db import transaction
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_bytes
 
 
 from accounts.models import DoctorProfile, PatientProfile, User
@@ -63,16 +66,15 @@ class DoctorProfileModelSerializer(serializers.ModelSerializer):
 
     def validate_specialization(self, value):
         if value.strip() == "":
-            raise serializers.ValidationError(
-                "Specialization cannot be empty.")
+            raise serializers.ValidationError("Specialization cannot be empty.")
         return value
-
 
 
 class UserSummarySerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     primary_role = serializers.SerializerMethodField()
     profile_id = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -81,6 +83,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "email_verified",
             "primary_role",
             "groups",
             "profile_id",
@@ -120,9 +123,15 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid username or password.")
 
         if not user.is_active:
-            raise serializers.ValidationError("User account is inactive.")
+            raise serializers.ValidationError(
+                'User account is inactive.')
 
-        attrs["user"] = user
+        if not user.email_verified:
+            raise serializers.ValidationError(
+                'Please verify your email address before logging in.'
+            )
+        
+        attrs['user'] = user
         return attrs
 
 
@@ -140,6 +149,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
+            "email_verified",
             "primary_role",
             "groups",
             "profile_id",
@@ -174,7 +184,6 @@ class LogoutSerializer(serializers.Serializer):
     def save(self, **kwargs):
         try:
             RefreshToken(self.refresh_token).blacklist()
-
 
         except TokenError:
             raise serializers.ValidationError("Invalid or expired token.")
@@ -345,22 +354,17 @@ class CurrentUserUpdateSerializer(serializers.Serializer):
                 "Phone number must contain only digits and optional leading '+'."
             )
 
-        digits_only = value.lstrip("+")
+        digits_only = value.lstrip('+')
 
-        # validate digit length only
         if len(digits_only) < 10 or len(digits_only) > 15:
             raise serializers.ValidationError(
                 "Phone number must be between 10 and 15 digits."
             )
 
-        normalized_phone = "+" + digits_only if value.startswith("+") else digits_only
-
-        if (
-            User.objects.filter(phone_number=normalized_phone)
-            .exclude(id=user.id)
-            .exists()
-        ):
+        normalized_phone = digits_only  
+        if User.objects.filter(phone_number__endswith=normalized_phone).exclude(id=user.id).exists():
             raise serializers.ValidationError("Phone number is already registered.")
+
 
         return normalized_phone
 
@@ -488,6 +492,7 @@ class CurrentDoctorProfileUpdateSerializer(serializers.Serializer):
 class StaffUserSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     primary_role = serializers.SerializerMethodField()
+    profile_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -499,8 +504,10 @@ class StaffUserSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
             "is_active",
+            "email_verified",
             "primary_role",
             "groups",
+            "profile_id",
         ]
 
     def get_groups(self, obj):
@@ -517,10 +524,22 @@ class StaffUserSerializer(serializers.ModelSerializer):
 
         return None
 
+    def get_profile_id(self, obj):
+        patient_profile = getattr(obj, "patientprofile", None)
+        if patient_profile is not None:
+            return patient_profile.id
+
+        doctor_profile = getattr(obj, "doctorprofile", None)
+        if doctor_profile is not None:
+            return doctor_profile.id
+
+        return None
+
 
 class StaffUserUpdateSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(required=False)
     groups = serializers.ListField(child=serializers.CharField(), required=False)
+    email_verified = serializers.BooleanField(required=False)
 
     def validate_groups(self, value):
 
@@ -554,7 +573,120 @@ class StaffUserUpdateSerializer(serializers.Serializer):
         if "groups" in validated_data:
             instance.groups.set(validated_data["groups"])
 
+        if "email_verified" in validated_data:
+            instance.email_verified = validated_data["email_verified"]
+            update_fields.append("email_verified")
+
         if update_fields:
             instance.save(update_fields=update_fields)
 
-        return instance
+        return instance 
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        value = value.strip().lower()
+
+        return value
+    
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        uid = attrs.get("uid")
+        token = attrs.get("token")
+        new_password = attrs.get("new_password")
+        new_password_confirm = attrs.get("new_password_confirm")
+
+        
+        try:
+            user_id = urlsafe_base64_decode(uid).decode()
+            user = User.objects.get(pk=user_id, is_active=True)
+        except Exception:
+            raise serializers.ValidationError({
+                "uid": "Invalid reset link."
+            })
+
+       
+        if not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError({
+                "token": "Invalid or expired token."
+            })
+
+        
+        if new_password != new_password_confirm:
+            raise serializers.ValidationError({
+                "new_password_confirm": "Password confirmation does not match password."
+            })
+
+
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({
+                "new_password": list(e.messages)
+            })
+
+        attrs["user"] = user
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.validated_data["user"]
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        return user
+    
+
+class VerifyEmailSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+
+        try:
+            user_id = urlsafe_base64_decode(attrs["uid"]).decode()
+            user = User.objects.get(pk=user_id, is_active=True)
+            
+        except Exception:
+            raise serializers.ValidationError("Invalid link")
+
+        if not default_token_generator.check_token(user, attrs["token"]):
+            raise serializers.ValidationError("Invalid or expired token")
+
+        if user.email_verified:
+            raise serializers.ValidationError("Email is already verified.")
+
+        attrs["user"] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data["user"]
+        user.email_verified = True
+        user.save(update_fields=["email_verified"])
+        return user
+
+
+class ResendVerificationEmailSerializer(serializers.Serializer):
+    identifier = serializers.CharField()
+
+    def validate(self, attrs):
+        identifier = attrs.get("identifier", "").strip()
+
+        if not identifier:
+            raise serializers.ValidationError("This field is required.")
+
+        user = None
+
+        if "@" in identifier:
+            user = User.objects.filter(email=identifier.lower()).first()
+        else:
+            user = User.objects.filter(username=identifier).first()
+
+        attrs["user"] = user
+        return attrs
