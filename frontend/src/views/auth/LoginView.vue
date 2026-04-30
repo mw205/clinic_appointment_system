@@ -34,9 +34,12 @@
           </div>
 
           <div v-if="isUnverified" class="text-center mt-2">
-            <Button type="button" variant="link" @click="handleResendVerification" :disabled="isResending" class="text-blue-600 p-0 h-auto font-normal">
+            <Button v-if="countdown === 0" type="button" variant="link" @click="handleResendVerification" :disabled="isResending" class="text-blue-600 p-0 h-auto font-normal">
               {{ isResending ? 'Sending...' : 'Resend verification email' }}
             </Button>
+            <p v-else class="text-sm text-gray-500 mt-2">
+              You can resend the link in {{ countdown }} seconds.
+            </p>
             <div v-if="resendMessage" class="text-green-600 text-sm mt-1">
               {{ resendMessage }}
             </div>
@@ -69,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { getDefaultRouteForRole, useAuth } from "@/composables/useAuth";
 
@@ -92,6 +95,24 @@ const isResending = ref(false);
 const resendMessage = ref("");
 const resendError = ref("");
 const successMessage = ref("");
+const countdown = ref(0);
+let timer = null;
+
+const startCountdown = () => {
+  countdown.value = 60;
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => {
+    countdown.value--;
+    if (countdown.value <= 0) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }, 1000);
+};
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
 
 onMounted(() => {
   if (route.query.message === 'password_changed') {
@@ -147,6 +168,7 @@ const handleResendVerification = async () => {
   try {
     const res = await resendVerificationEmail(username.value);
     resendMessage.value = res.detail || "If an account exists, a verification email has been sent.";
+    startCountdown();
   } catch (error) {
     if (error.response?.status === 429) {
       resendError.value = "Too many requests, please try again later.";

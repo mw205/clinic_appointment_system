@@ -36,6 +36,21 @@
 
         <div v-else class="text-center space-y-4 py-4">
           <p class="text-gray-600">{{ successMessage }}</p>
+          
+          <div class="pt-4">
+            <Button
+              v-if="countdown === 0"
+              variant="outline"
+              @click="handleSubmit"
+              :disabled="isLoading"
+              class="w-full"
+            >
+              {{ isLoading ? 'Sending...' : 'Resend Email' }}
+            </Button>
+            <p v-else class="text-sm text-gray-500">
+              You can resend the link in {{ countdown }} seconds.
+            </p>
+          </div>
         </div>
 
         <div class="text-center text-sm pt-4 border-t mt-6">
@@ -54,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from "@/composables/useAuth";
 
@@ -72,6 +87,24 @@ const isLoading = ref(false);
 const isSuccess = ref(false);
 const errorMessage = ref("");
 const successMessage = ref("");
+const countdown = ref(0);
+let timer = null;
+
+const startCountdown = () => {
+  countdown.value = 60;
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => {
+    countdown.value--;
+    if (countdown.value <= 0) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }, 1000);
+};
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
 
 const handleSubmit = async () => {
   if (!email.value) return;
@@ -83,6 +116,7 @@ const handleSubmit = async () => {
     const res = await forgotPassword(email.value);
     isSuccess.value = true;
     successMessage.value = res.detail || "If an account with that email exists, a password reset link has been sent.";
+    startCountdown();
   } catch (error) {
     const data = error.response?.data;
     const dataErrors = data?.errors || data?.details || data;
