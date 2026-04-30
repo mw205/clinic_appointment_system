@@ -20,7 +20,7 @@ class DoctorScheduleViewSet(viewsets.ModelViewSet):
     queryset = DoctorSchedule.objects.all()
     serializer_class = DoctorScheduleModelSerializer
     filterset_fields = ["doctor", "day_of_week"]
-    # permission_classes = [IsAuthenticated, IsDoctorOrReceptionist]
+    permission_classes = [IsAuthenticated, IsDoctorOrReceptionist]
 
     @action(
         detail=False,
@@ -56,4 +56,4 @@ class DoctorScheduleViewSet(viewsets.ModelViewSet):
 class ScheduleExceptionViewSet(viewsets.ModelViewSet):
     queryset = ScheduleException.objects.all()
     serializer_class = ScheduleExceptionModelSerializer
-    # permission_classes = [IsAuthenticated, IsDoctorOrReceptionist]
+    permission_classes = [IsAuthenticated, IsDoctorOrReceptionist]
