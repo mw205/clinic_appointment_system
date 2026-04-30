@@ -123,12 +123,52 @@ export const useAuth = () => {
     isLoading.value = true
     try {
       const response = await api.post('/accounts/register/', userData)
-      const newAccessToken = response.data.access || response.data.access_token || response.data
-      setAccessToken(newAccessToken)
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
 
-      const userRes = await api.get('/accounts/me/')
-      user.value = userRes.data
-      return user.value
+  const verifyEmail = async (uid, token) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/verify-email/', { uid, token })
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const resendVerificationEmail = async (email) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/resend-verification-email/', { email })
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const forgotPassword = async (email) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/forgot-password/', { email })
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const resetPassword = async (uid, token, new_password, new_password_confirm) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/reset-password/', {
+        uid,
+        token,
+        new_password,
+        new_password_confirm
+      })
+      return response.data
     } finally {
       isLoading.value = false
     }
