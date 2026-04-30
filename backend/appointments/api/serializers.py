@@ -104,8 +104,8 @@ class AppointmentBookingResponseSerializer(serializers.ModelSerializer):
 
 class AppointmentSerializer(serializers.ModelSerializer):
     waiting_time = serializers.SerializerMethodField()
-    doctor = DoctorProfileModelSerializer(read_only=True)
-    patient = PatientProfileModelSerializer(read_only=True)
+    patient = serializers.SerializerMethodField()
+    doctor = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
@@ -127,6 +127,22 @@ class AppointmentSerializer(serializers.ModelSerializer):
             delta = timezone.now() - obj.start_time
 
         return max(int(delta.total_seconds() / 60), 0)
+
+    def get_patient(self, obj):
+        patient_user = obj.patient.user
+        return {
+            "id": obj.patient_id,
+            "user_id": patient_user.id,
+            "name": patient_user.get_full_name() or patient_user.username,
+        }
+
+    def get_doctor(self, obj):
+        doctor_user = obj.doctor.user
+        return {
+            "id": obj.doctor_id,
+            "user_id": doctor_user.id,
+            "name": doctor_user.get_full_name() or doctor_user.username,
+        }
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
