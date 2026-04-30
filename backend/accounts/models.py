@@ -12,6 +12,7 @@ class User(AbstractUser):
     # Legacy compatibility field. Group membership is the active RBAC source.
     role = models.CharField(max_length=20, choices=role_choices, default="patient")
     phone_number = models.CharField(max_length=15)
+    email_verified = models.BooleanField(default=False)
 
 
 class PatientProfile(models.Model):

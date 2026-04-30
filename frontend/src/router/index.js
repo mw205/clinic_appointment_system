@@ -17,6 +17,24 @@ const router = createRouter({
       meta: { requiresAuth: false, guestOnly: true },
     },
     {
+      path: '/verify-email',
+      name: 'VerifyEmail',
+      component: () => import('@/views/auth/VerifyEmailView.vue'),
+      meta: { requiresAuth: false, guestOnly: true },
+    },
+    {
+      path: '/forgot-password',
+      name: 'ForgotPassword',
+      component: () => import('@/views/auth/ForgotPasswordView.vue'),
+      meta: { requiresAuth: false, guestOnly: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'ResetPassword',
+      component: () => import('@/views/auth/ResetPasswordView.vue'),
+      meta: { requiresAuth: false, guestOnly: true },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/DashboardLayout.vue'),
       meta: { requiresAuth: true },
@@ -123,6 +141,39 @@ const router = createRouter({
           name: 'AdminDashboard',
           component: () => import('@/views/admin/AdminDashboardView.vue'),
           meta: { requiresAuth: true, role: 'admin' },
+        },
+        {
+          path: '/admin/users',
+          name: 'AdminUsersList',
+          component: () => import('@/views/admin/UsersListView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: '/admin/users/:id',
+          name: 'AdminUserEdit',
+          component: () => import('@/views/admin/UserEditView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: '/settings',
+          component: () => import('@/views/settings/SettingsLayout.vue'),
+          meta: { requiresAuth: true },
+          children: [
+            {
+              path: '',
+              redirect: '/settings/account'
+            },
+            {
+              path: 'account',
+              name: 'AccountSettings',
+              component: () => import('@/views/settings/AccountSettingsView.vue')
+            },
+            {
+              path: 'profile',
+              name: 'ProfileSettings',
+              component: () => import('@/views/settings/ProfileSettingsView.vue')
+            }
+          ]
         },
         {
           path: '',

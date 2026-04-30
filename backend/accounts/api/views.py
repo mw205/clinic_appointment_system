@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,14 +12,20 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from rest_framework.throttling import AnonRateThrottle
 
 
 
-from accounts.api.serializers import LoginSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer, ChangePasswordSerializer
+from accounts.api.serializers import LoginSerializer, ResetPasswordSerializer, UserSummarySerializer, CurrentUserSerializer, LogoutSerializer, PatientRegistrationSerializer, CurrentUserUpdateSerializer, CurrentPatientProfileSerializer, CurrentPatientProfileUpdateSerializer, CurrentDoctorProfileSerializer,CurrentDoctorProfileUpdateSerializer, StaffUserSerializer, StaffUserUpdateSerializer, ChangePasswordSerializer, ForgotPasswordSerializer, VerifyEmailSerializer, ResendVerificationEmailSerializer
 from accounts.rbac import is_patient, is_doctor, is_admin
 from accounts.models import DoctorProfile, PatientProfile, User
 from accounts.api.permissions import IsAdminOrReceptionist, IsAdminOnly
+from accounts.services.auth_email import send_password_reset_email, send_verification_email
 
+logger = logging.getLogger(__name__)
 
 def set_refresh_cookie(response, refresh_token):
     response.set_cookie(
@@ -151,21 +159,13 @@ class PatientRegistrationView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.save()
-
-        refresh = RefreshToken.for_user(user)
-        refresh_token = str(refresh)
-        access_token = str(refresh.access_token)
-
-        user_data = UserSummarySerializer(user).data
-
-        response = Response({
-            'access': access_token,
-            'user': user_data
-        },
-        status=status.HTTP_201_CREATED
+        send_verification_email(user)
+        return Response(
+            {
+                "detail": "Registration successful. Please verify your email, then log in."
+            },
+            status=status.HTTP_201_CREATED,
         )
-        set_refresh_cookie(response, refresh_token)
-        return response
 
 
 class RefreshTokenCookieView(APIView):
@@ -295,3 +295,79 @@ class UserViewSet(
         output_serializer = StaffUserSerializer(instance)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
 
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+
+        user = User.objects.filter(email=email, is_active=True).first()
+
+
+        if user:
+            send_password_reset_email(user)
+
+
+        response_data = {
+            "detail": "If an account with that email exists, a password reset link has been sent."
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+    
+
+ 
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"detail": "Password has been reset successfully."},
+            status=status.HTTP_200_OK
+        )
+    
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"detail": "Email has been verified successfully."},
+            status=status.HTTP_200_OK
+        )
+
+
+class ResendVerificationThrottle(AnonRateThrottle):
+    rate = "5/min"   
+class ResendVerificationEmailView(APIView):
+    permission_classes = [AllowAny]  
+    throttle_classes = [ResendVerificationThrottle]
+
+    def post(self, request):
+        serializer = ResendVerificationEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data.get("user")
+
+        if user and not user.email_verified:
+            try:
+                send_verification_email(user)
+            except Exception:
+                pass
+
+        return Response(
+            {
+                "detail": "If an account exists, a verification email has been sent."
+            },
+            status=status.HTTP_200_OK,
+        )

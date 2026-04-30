@@ -10,7 +10,7 @@
         <CardTitle class="text-2xl">Create your account</CardTitle>
         <CardDescription>Enter your details to get started</CardDescription>
       </CardHeader>
-      <CardContent class="space-y-4">
+      <CardContent v-if="!isSuccess" class="space-y-4">
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-2">
@@ -88,31 +88,20 @@
           </div>
         </form>
 
-        <div class="relative">
-          <div class="absolute inset-0 flex items-center">
-            <span class="w-full border-t" />
-          </div>
-          <div class="relative flex justify-center text-xs uppercase">
-            <span class="bg-white px-2 text-gray-500">Or sign up with</span>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <Button variant="outline" @click="handleSocialLogin('google')" :disabled="isLoading">
-            <Chrome class="mr-2 h-4 w-4" />
-            Google
-          </Button>
-          <Button variant="outline" @click="handleSocialLogin('facebook')" :disabled="isLoading">
-            <Facebook class="mr-2 h-4 w-4" />
-            Facebook
-          </Button>
-        </div>
-
-        <div class="text-center text-sm">
+        <div class="text-center text-sm mt-6">
           <span class="text-gray-500">Already have an account? </span>
           <button @click="router.push('/login')" class="text-blue-600 hover:underline font-medium" :disabled="isLoading">
             Sign in
           </button>
+        </div>
+      </CardContent>
+      
+      <CardContent v-else class="space-y-6 py-8">
+        <div class="text-center space-y-4">
+          <p class="text-gray-600">{{ successMessage }}</p>
+          <Button @click="router.push('/login')" class="w-full bg-teal-600 hover:bg-teal-700">
+            Go to Login
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -128,10 +117,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Activity, Chrome, Facebook } from "lucide-vue-next";
+import { Activity } from "lucide-vue-next";
 
 const router = useRouter();
-const { register, loginWithSocial, user } = useAuth();
+const { register, user } = useAuth();
 
 const formData = reactive({
   username: "",
@@ -148,6 +137,8 @@ const formData = reactive({
 
 const isLoading = ref(false);
 const errorMessage = ref("");
+const isSuccess = ref(false);
+const successMessage = ref("");
 
 const handleSubmit = async () => {
   if (formData.password !== formData.confirmPassword) {
@@ -175,20 +166,20 @@ const handleSubmit = async () => {
       blood_type: formData.blood_type,
       gender: formData.gender,
     };
-    await register(signupData);
-    router.push(getDefaultRouteForRole(user.value?.primary_role));
+    const response = await register(signupData);
+    isSuccess.value = true;
+    successMessage.value = response?.detail || "Registration successful. Please verify your email, then log in.";
   } catch (error) {
     const data = error.response?.data;
-    const dataErrors = data?.errors || data?.details;
+    const dataErrors = data?.errors || data?.details || data;
     
     if (dataErrors) {
         const errors = [];
         for (const [key, val] of Object.entries(dataErrors)) {
-            if (Array.isArray(val)) {
-                errors.push(`${key === 'non_field_errors' ? '' : key + ': '}${val.join(', ')}`);
-            } else {
-                errors.push(`${key === 'non_field_errors' ? '' : key + ': '}${val}`);
-            }
+            let msg = Array.isArray(val) ? val.join(', ') : val;
+            const noPrefixKeys = ['non_field_errors', 'detail', 'uid', 'token'];
+            const prefix = noPrefixKeys.includes(key) ? '' : `${key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}: `;
+            errors.push(`${prefix}${msg}`);
         }
         errorMessage.value = errors.join('\n');
     } else if (data?.detail) {
@@ -203,15 +194,4 @@ const handleSubmit = async () => {
   }
 };
 
-const handleSocialLogin = async (provider) => {
-  isLoading.value = true;
-  try {
-    await loginWithSocial(provider);
-    router.push(getDefaultRouteForRole(user.value?.primary_role));
-  } catch (error) {
-    errorMessage.value = 'Social signup failed';
-  } finally {
-    isLoading.value = false;
-  }
-};
 </script>

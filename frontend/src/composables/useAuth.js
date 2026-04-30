@@ -123,13 +123,52 @@ export const useAuth = () => {
     isLoading.value = true
     try {
       const response = await api.post('/accounts/register/', userData)
-      const newAccessToken = response.data.access || response.data.access_token || response.data
-      setAccessToken(newAccessToken)
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
 
-      const userRes = await api.get(API_ENDPOINTS.ACCOUNTS.BASE + API_ENDPOINTS.ACCOUNTS.ME)
-      user.value = userRes.data
-      await getCurrentUserProfile()
-      return user.value
+  const verifyEmail = async (uid, token) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/verify-email/', { uid, token })
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const resendVerificationEmail = async (identifier) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/resend-verification-email/', { identifier })
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const forgotPassword = async (email) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/forgot-password/', { email })
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const resetPassword = async (uid, token, new_password, new_password_confirm) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/reset-password/', {
+        uid,
+        token,
+        new_password,
+        new_password_confirm
+      })
+      return response.data
     } finally {
       isLoading.value = false
     }
@@ -153,6 +192,74 @@ export const useAuth = () => {
     console.warn('Social login not implemented.')
   }
 
+  const updateAccount = async (data) => {
+    isLoading.value = true
+    try {
+      const response = await api.patch('/accounts/me/', data)
+      user.value = response.data
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const changePassword = async (current_password, new_password, new_password_confirm) => {
+    isLoading.value = true
+    try {
+      const response = await api.post('/accounts/me/change-password/', {
+        current_password,
+        new_password,
+        new_password_confirm
+      })
+      // Clear user session as they need to log in again
+      setAccessToken(null)
+      user.value = null
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const getPatientProfile = async () => {
+    isLoading.value = true
+    try {
+      const response = await api.get('/accounts/me/patient-profile/')
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const updatePatientProfile = async (data) => {
+    isLoading.value = true
+    try {
+      const response = await api.patch('/accounts/me/patient-profile/', data)
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const getDoctorProfile = async () => {
+    isLoading.value = true
+    try {
+      const response = await api.get('/accounts/me/doctor-profile/')
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const updateDoctorProfile = async (data) => {
+    isLoading.value = true
+    try {
+      const response = await api.patch('/accounts/me/doctor-profile/', data)
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     user,
     isInitialized,
@@ -165,8 +272,18 @@ export const useAuth = () => {
     checkSession,
     login,
     register,
+    verifyEmail,
+    resendVerificationEmail,
+    forgotPassword,
+    resetPassword,
     logout,
     loginWithSocial,
+    updateAccount,
+    changePassword,
+    getPatientProfile,
+    updatePatientProfile,
+    getDoctorProfile,
+    updateDoctorProfile,
     getUserRole,
     getCurrentUserProfile,
   }
