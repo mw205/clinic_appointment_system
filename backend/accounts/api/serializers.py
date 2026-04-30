@@ -76,6 +76,7 @@ class DoctorProfileModelSerializer(serializers.ModelSerializer):
 class UserSummarySerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     primary_role = serializers.SerializerMethodField()
+    profile_id = serializers.SerializerMethodField()
     class Meta:
         model = User
         fields = [
@@ -85,7 +86,8 @@ class UserSummarySerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "primary_role",
-            "groups"
+            "groups",
+            "profile_id",
         ]
 
     def get_groups(self, obj):
@@ -94,6 +96,17 @@ class UserSummarySerializer(serializers.ModelSerializer):
     def get_primary_role(self, obj):
         groups = list(obj.groups.values_list('name', flat=True))
         return groups[0] if groups else None
+
+    def get_profile_id(self, obj):
+        patient_profile = getattr(obj, "patientprofile", None)
+        if patient_profile is not None:
+            return patient_profile.id
+
+        doctor_profile = getattr(obj, "doctorprofile", None)
+        if doctor_profile is not None:
+            return doctor_profile.id
+
+        return None
         
 
 class LoginSerializer(serializers.Serializer):
@@ -122,6 +135,7 @@ class LoginSerializer(serializers.Serializer):
 class CurrentUserSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     primary_role = serializers.SerializerMethodField()
+    profile_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -133,7 +147,8 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             "last_name",
             "phone_number",
             "primary_role",
-            "groups"
+            "groups",
+            "profile_id",
         ]
 
     def get_groups(self, obj):
@@ -142,6 +157,17 @@ class CurrentUserSerializer(serializers.ModelSerializer):
     def get_primary_role(self, obj):
         groups = list(obj.groups.values_list('name', flat=True))
         return groups[0] if groups else None
+
+    def get_profile_id(self, obj):
+        patient_profile = getattr(obj, "patientprofile", None)
+        if patient_profile is not None:
+            return patient_profile.id
+
+        doctor_profile = getattr(obj, "doctorprofile", None)
+        if doctor_profile is not None:
+            return doctor_profile.id
+
+        return None
     
 
 class LogoutSerializer(serializers.Serializer):

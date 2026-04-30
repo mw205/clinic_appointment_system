@@ -74,7 +74,7 @@ class AppointmentViewSet(
             return [IsAuthenticated(), CanCancelAppointment()]
         if self.action == "reschedule":
             return [IsAuthenticated(), CanRescheduleAppointment()]
-        if self.action == "doctor_queue" or self.action == "hide":
+        if self.action == "doctor_queue":
             return [IsAuthenticated(), IsDoctorRole()]
 
         return [IsAuthenticated()]
@@ -168,8 +168,11 @@ class AppointmentViewSet(
     def check_in(self, request, pk=None):
         appointment = self.get_object()
 
-        if request.user.doctorprofile.id != appointment.doctor_id:
+        if is_receptionist(request.user):
+            pass
+        elif request.user.doctorprofile.id != appointment.doctor_id:
             raise PermissionDenied("You do not have permission")
+
         if appointment.status != Appointment.Status.CONFIRMED:
             return Response({"error": "Appointment already processed"}, status=HTTP_400_BAD_REQUEST)
         appointment.status = Appointment.Status.CHECKED_IN
@@ -219,7 +222,9 @@ class AppointmentViewSet(
     def hide(self, request, pk=None):
         appointment = self.get_object()
 
-        if request.user.doctorprofile.id != appointment.doctor_id:
+        if is_receptionist(request.user):
+            pass
+        elif request.user.doctorprofile.id != appointment.doctor_id:
             raise PermissionDenied("You do not have permission")
 
         appointment.status = Appointment.Status.NO_SHOW

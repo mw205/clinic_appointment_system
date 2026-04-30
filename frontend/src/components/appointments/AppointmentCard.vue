@@ -14,6 +14,14 @@ const props = defineProps({
     type: Function,
     required: true,
   },
+  canStartConsultation: {
+    type: Boolean,
+    default: false,
+  },
+  canViewRecord: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["check-in", "no-show", "complete", "view-record"]);
@@ -32,7 +40,7 @@ const waitTime = computed(() => props.calculateWaitTime(props.appointment.check_
         </div>
         <div class="flex-1">
           <div class="flex items-center gap-3">
-            <p class="font-medium text-gray-900">{{ appointment.patient.user.username }}</p>
+            <p class="font-medium text-gray-900">{{ appointment.patient.name }}</p>
             <Badge variant="secondary">
               {{ appointment.status }}
               <span v-if="appointment.status === 'checked_in'">
@@ -76,7 +84,7 @@ const waitTime = computed(() => props.calculateWaitTime(props.appointment.check_
         </Button>
 
         <Button
-          v-if="appointment.status === 'checked_in'"
+          v-if="appointment.status === 'checked_in' && canStartConsultation"
           size="sm"
           class="bg-green-600 hover:bg-green-700"
           @click="emit('complete', appointment.id)"
@@ -85,7 +93,7 @@ const waitTime = computed(() => props.calculateWaitTime(props.appointment.check_
         </Button>
 
         <Button
-          v-if="appointment.status === 'completed'"
+          v-if="appointment.status === 'completed' && canViewRecord"
           size="sm"
           variant="outline"
           @click="emit('view-record', appointment.id)"
