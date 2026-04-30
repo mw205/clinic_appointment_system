@@ -63,16 +63,15 @@ class DoctorProfileModelSerializer(serializers.ModelSerializer):
 
     def validate_specialization(self, value):
         if value.strip() == "":
-            raise serializers.ValidationError(
-                "Specialization cannot be empty.")
+            raise serializers.ValidationError("Specialization cannot be empty.")
         return value
-
 
 
 class UserSummarySerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     primary_role = serializers.SerializerMethodField()
     profile_id = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -174,7 +173,6 @@ class LogoutSerializer(serializers.Serializer):
     def save(self, **kwargs):
         try:
             RefreshToken(self.refresh_token).blacklist()
-
 
         except TokenError:
             raise serializers.ValidationError("Invalid or expired token.")
@@ -488,6 +486,7 @@ class CurrentDoctorProfileUpdateSerializer(serializers.Serializer):
 class StaffUserSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     primary_role = serializers.SerializerMethodField()
+    profile_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -501,6 +500,7 @@ class StaffUserSerializer(serializers.ModelSerializer):
             "is_active",
             "primary_role",
             "groups",
+            "profile_id",
         ]
 
     def get_groups(self, obj):
@@ -514,6 +514,17 @@ class StaffUserSerializer(serializers.ModelSerializer):
         for role in role_priority:
             if role in groups:
                 return role
+
+        return None
+
+    def get_profile_id(self, obj):
+        patient_profile = getattr(obj, "patientprofile", None)
+        if patient_profile is not None:
+            return patient_profile.id
+
+        doctor_profile = getattr(obj, "doctorprofile", None)
+        if doctor_profile is not None:
+            return doctor_profile.id
 
         return None
 
