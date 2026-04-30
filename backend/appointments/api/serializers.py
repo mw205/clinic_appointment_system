@@ -6,13 +6,32 @@ from accounts.api.serializers import (
     PatientProfileModelSerializer,
 )
 from accounts.models import DoctorProfile, User
-from appointments.models import Appointment
+from appointments.models import Appointment, RescheduleHistory
 from accounts.rbac import PATIENT, is_doctor, is_patient
+
+
+class RescheduleHistorySerializer(serializers.ModelSerializer):
+    changed_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RescheduleHistory
+        fields = [
+            "id",
+            "old_start_time",
+            "new_start_time",
+            "reason",
+            "timestamp",
+            "changed_by",
+        ]
+
+    def get_changed_by(self, obj):
+        return obj.changed_by.get_full_name() or obj.changed_by.username
 
 
 class AppointmentReadSerializer(serializers.ModelSerializer):
     patient = serializers.SerializerMethodField()
     doctor = serializers.SerializerMethodField()
+    reschedule_history = RescheduleHistorySerializer(many=True, read_only=True)
 
     class Meta:
         model = Appointment
@@ -24,6 +43,7 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
             "end_time",
             "status",
             "created_at",
+            "reschedule_history",
         ]
 
     def get_patient(self, obj):
@@ -84,8 +104,8 @@ class AppointmentBookingResponseSerializer(serializers.ModelSerializer):
 
 class AppointmentSerializer(serializers.ModelSerializer):
     waiting_time = serializers.SerializerMethodField()
-    doctor = DoctorProfileModelSerializer(read_only=True)
-    patient = PatientProfileModelSerializer(read_only=True)
+    patient = serializers.SerializerMethodField()
+    doctor = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
@@ -107,6 +127,22 @@ class AppointmentSerializer(serializers.ModelSerializer):
             delta = timezone.now() - obj.start_time
 
         return max(int(delta.total_seconds() / 60), 0)
+
+    def get_patient(self, obj):
+        patient_user = obj.patient.user
+        return {
+            "id": obj.patient_id,
+            "user_id": patient_user.id,
+            "name": patient_user.get_full_name() or patient_user.username,
+        }
+
+    def get_doctor(self, obj):
+        doctor_user = obj.doctor.user
+        return {
+            "id": obj.doctor_id,
+            "user_id": doctor_user.id,
+            "name": doctor_user.get_full_name() or doctor_user.username,
+        }
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

@@ -62,6 +62,7 @@ class AccountsAPITests(APITestCase):
         self.register_url = reverse("register")
         self.login_url = reverse("login")
         self.me_url = reverse("current-user")
+        self.change_password_url = reverse("change-password")
         self.refresh_url = reverse("token_refresh")
         self.logout_url = reverse("logout")
 
@@ -192,3 +193,45 @@ class AccountsAPITests(APITestCase):
             format="json",
         )
         self.assertEqual(second_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_change_password_updates_password_and_blacklists_refresh_cookie(self):
+        user = self.create_patient_user(username="change_password_user", email="change@example.com")
+        refresh = RefreshToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        self.client.cookies[settings.AUTH_REFRESH_COOKIE_NAME] = str(refresh)
+
+        response = self.client.post(
+            self.change_password_url,
+            {
+                "current_password": "StrongPass123!",
+                "new_password": "NewStrongPass123!",
+                "new_password_confirm": "NewStrongPass123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("NewStrongPass123!"))
+
+        self.client.credentials()
+        refresh_response = self.client.post(self.refresh_url, format="json")
+        self.assertEqual(refresh_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_change_password_rejects_incorrect_current_password(self):
+        user = self.create_patient_user(username="wrong_current_password", email="wrong-current@example.com")
+        refresh = RefreshToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+
+        response = self.client.post(
+            self.change_password_url,
+            {
+                "current_password": "WrongPass123!",
+                "new_password": "NewStrongPass123!",
+                "new_password_confirm": "NewStrongPass123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("current_password", response.data["details"])
