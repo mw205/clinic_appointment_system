@@ -98,36 +98,47 @@ onMounted(loadAppointments);
           {{ errorMessage }}
         </div>
 
-        <Table v-else>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Doctor</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="appointment in appointments" :key="appointment.id">
-              <TableCell>
-                <RouterLink
-                  :to="`/patient/appointments/${appointment.id}`"
-                  class="font-medium text-blue-700 hover:underline"
-                >
-                  {{ appointment.doctor.name }}
-                </RouterLink>
-              </TableCell>
-              <TableCell>{{ formatDateTime(appointment.start_time) }}</TableCell>
-              <TableCell>
-                <Badge :variant="statusVariant(appointment.status)">
-                  {{ appointment.status }}
-                </Badge>
-              </TableCell>
-            </TableRow>
-            <TableEmpty v-if="!appointments.length">
-              No appointments found.
-            </TableEmpty>
-          </TableBody>
-        </Table>
+        <div v-else class="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Doctor</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Consultation</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="appointment in appointments" :key="appointment.id">
+                <TableCell>
+                  <RouterLink
+                    :to="`/patient/appointments/${appointment.id}`"
+                    class="font-medium text-blue-700 hover:underline"
+                  >
+                    {{ appointment.doctor.name }}
+                  </RouterLink>
+                </TableCell>
+                <TableCell>{{ formatDateTime(appointment.start_time) }}</TableCell>
+                <TableCell>
+                  <Badge :variant="statusVariant(appointment.status)">
+                    {{ appointment.status }}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <RouterLink
+                    :to="`/patient/consultations/${appointment.id}/summary`"
+                    class="inline-flex items-center rounded-md border border-blue-200 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                  >
+                    View Consultation
+                  </RouterLink>
+                </TableCell>
+              </TableRow>
+              <TableEmpty v-if="!appointments.length">
+                No appointments found.
+              </TableEmpty>
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   </div>

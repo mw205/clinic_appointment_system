@@ -125,7 +125,10 @@ export const rescheduleAppointment = async (id, payload) => {
 }
 
 export const getAvailableSlots = async (params = {}) => {
-  const response = await api.get(API_ENDPOINTS.SCHEDULING.AVAILABLE_SLOTS, { params })
+  const response = await api.get(
+    `${API_ENDPOINTS.SCHEDULING.BASE}${API_ENDPOINTS.SCHEDULING.SCHEDULES}${API_ENDPOINTS.SCHEDULING.AVAILABLE_SLOTS}`,
+    { params },
+  )
   return response.data
 }
 
