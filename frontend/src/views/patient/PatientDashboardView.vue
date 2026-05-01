@@ -104,6 +104,7 @@ onMounted(loadAppointments);
               <TableHead>Doctor</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Consultation</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -121,6 +122,16 @@ onMounted(loadAppointments);
                 <Badge :variant="statusVariant(appointment.status)">
                   {{ appointment.status }}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                <RouterLink
+                  v-if="appointment.status === 'completed' && appointment.consultation_id"
+                  :to="`/patient/consultations/${appointment.consultation_id}/summary`"
+                  class="inline-flex items-center rounded-md border border-blue-200 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                >
+                  View Consultation
+                </RouterLink>
+                <span v-else class="text-sm text-gray-400">No Consultation Yet</span>
               </TableCell>
             </TableRow>
             <TableEmpty v-if="!appointments.length">
