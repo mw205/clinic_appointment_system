@@ -31,7 +31,7 @@ const NAV_ITEMS = [
     label: "Dashboard",
     icon: LayoutDashboard,
     path: "dashboard",
-    roles: ["Patient", "Doctor", "Receptionist", "Admin"],
+    roles: ["Patient", "Admin"],
   },
   {
     label: "Appointments",
@@ -186,7 +186,8 @@ const handleNavigate = (pathOrItem) => {
         <div class="p-4 border-t border-gray-200">
           <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
             <Avatar class="h-9 w-9">
-              <AvatarFallback class="flex h-full w-full items-center justify-center bg-blue-600 text-xs font-semibold uppercase leading-none text-white">
+              <AvatarFallback
+                class="flex h-full w-full items-center justify-center bg-blue-600 text-xs font-semibold uppercase leading-none text-white">
                 {{ userInitials }}
               </AvatarFallback>
             </Avatar>
@@ -225,7 +226,8 @@ const handleNavigate = (pathOrItem) => {
               <DropdownMenuTrigger as-child>
                 <Button variant="ghost" class="gap-2">
                   <Avatar class="h-8 w-8">
-                    <AvatarFallback class="flex h-full w-full items-center justify-center bg-blue-600 text-xs font-semibold uppercase leading-none text-white">
+                    <AvatarFallback
+                      class="flex h-full w-full items-center justify-center bg-blue-600 text-xs font-semibold uppercase leading-none text-white">
                       {{ userInitials }}
                     </AvatarFallback>
                   </Avatar>
