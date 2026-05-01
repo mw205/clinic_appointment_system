@@ -104,6 +104,7 @@ onMounted(loadAppointments);
               <TableHead>Doctor</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead class="text-right">Consultation</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -121,6 +122,29 @@ onMounted(loadAppointments);
                 <Badge :variant="statusVariant(appointment.status)">
                   {{ appointment.status }}
                 </Badge>
+              </TableCell>
+              <TableCell class="text-right">
+                <Button
+                  v-if="
+                    appointment.status === 'completed'
+                    && appointment.consultation_id
+                    && appointment.consultation_completed
+                  "
+                  as-child
+                  size="sm"
+                  class="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                >
+                  <RouterLink :to="`/patient/consultations/${appointment.consultation_id}/summary`">
+                    View Consultation
+                  </RouterLink>
+                </Button>
+                <span
+                  v-else-if="appointment.status === 'completed'"
+                  class="inline-flex rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700"
+                >
+                  Not completed yet
+                </span>
+                <span v-else class="text-xs text-muted-foreground">No Consultation Yet</span>
               </TableCell>
             </TableRow>
             <TableEmpty v-if="!appointments.length">
