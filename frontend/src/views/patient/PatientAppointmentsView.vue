@@ -14,7 +14,7 @@ const props = defineProps({
   mode: {
     type: String,
     default: 'upcoming',
-    validator: (value) => ['upcoming', 'history'].includes(value),
+    validator: (value) => ['upcoming', 'history', 'consultations'].includes(value),
   },
 })
 
@@ -24,8 +24,19 @@ const actionId = ref(null)
 const errorMessage = ref('')
 
 const isHistory = computed(() => props.mode === 'history')
-const title = computed(() => isHistory.value ? 'Appointment History' : 'Upcoming Appointments')
-const emptyMessage = computed(() => isHistory.value ? 'No past appointments found.' : 'No upcoming appointments found.')
+const isConsultations = computed(() => props.mode === 'consultations')
+const title = computed(() => {
+  if (isConsultations.value) {
+    return 'Consultations'
+  }
+  return isHistory.value ? 'Appointment History' : 'Upcoming Appointments'
+})
+const emptyMessage = computed(() => {
+  if (isConsultations.value) {
+    return 'No consultations found.'
+  }
+  return isHistory.value ? 'No past appointments found.' : 'No upcoming appointments found.'
+})
 const activeStatuses = ['requested', 'confirmed', 'checked_in']
 const finalStatuses = ['cancelled', 'completed', 'no_show']
 
@@ -35,6 +46,10 @@ const visibleAppointments = computed(() => {
   return appointments.value.filter((appointment) => {
     const startsAt = new Date(appointment.start_time).getTime()
     const finalStatus = ['completed', 'cancelled', 'no_show'].includes(appointment.status)
+
+    if (isConsultations.value) {
+      return appointment.status === 'completed' && !!appointment.consultation_id
+    }
 
     if (isHistory.value) {
       return finalStatus || startsAt < now
@@ -65,11 +80,15 @@ function statusVariant(status) {
 }
 
 function canCancel(appointment) {
-  return !isHistory.value && !finalStatuses.includes(appointment.status)
+  return !isHistory.value && !isConsultations.value && !finalStatuses.includes(appointment.status)
 }
 
 function canReschedule(appointment) {
-  return !isHistory.value && ['requested', 'confirmed'].includes(appointment.status)
+  return !isHistory.value && !isConsultations.value && ['requested', 'confirmed'].includes(appointment.status)
+}
+
+function canViewConsultation(appointment) {
+  return isConsultations.value && !!appointment.consultation_id
 }
 
 async function loadAppointments() {
@@ -78,11 +97,11 @@ async function loadAppointments() {
 
   try {
     const params = {
-      ordering: isHistory.value ? '-start_time' : 'start_time',
+      ordering: isHistory.value || isConsultations.value ? '-start_time' : 'start_time',
       page_size: 50,
     }
 
-    if (!isHistory.value) {
+    if (!isHistory.value && !isConsultations.value) {
       params.start_from = new Date().toISOString()
     }
 
@@ -126,11 +145,17 @@ onMounted(loadAppointments)
       <div>
         <h1 class="text-2xl font-semibold text-gray-900">{{ title }}</h1>
         <p class="text-sm text-gray-500">
-          {{ isHistory ? 'Review previous visits and cancelled appointments.' : 'Manage your requested and confirmed appointments.' }}
+          {{
+            isConsultations
+              ? 'Review completed visits and open each consultation summary.'
+              : isHistory
+                ? 'Review previous visits and cancelled appointments.'
+                : 'Manage your requested and confirmed appointments.'
+          }}
         </p>
       </div>
 
-      <Button v-if="!isHistory" as-child>
+      <Button v-if="!isHistory && !isConsultations" as-child>
         <RouterLink to="/patient/book">Book Appointment</RouterLink>
       </Button>
     </div>
@@ -173,6 +198,11 @@ onMounted(loadAppointments)
                 <div class="flex justify-end gap-2">
                   <Button as-child size="sm" variant="outline">
                     <RouterLink :to="`/patient/appointments/${appointment.id}`">Details</RouterLink>
+                  </Button>
+                  <Button v-if="canViewConsultation(appointment)" as-child size="sm">
+                    <RouterLink :to="`/patient/consultations/${appointment.consultation_id}/summary`">
+                      View Consultation
+                    </RouterLink>
                   </Button>
                   <Button v-if="canReschedule(appointment)" as-child size="sm" variant="outline">
                     <RouterLink :to="`/patient/appointments/${appointment.id}`">Reschedule</RouterLink>

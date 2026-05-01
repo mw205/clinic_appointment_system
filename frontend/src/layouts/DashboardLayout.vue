@@ -54,9 +54,9 @@ const NAV_ITEMS = [
   {
     label: "Consultations",
     icon: FileText,
-    path: "history",
+    path: "consultations",
     roles: ["Patient"],
-    fullPath: "/patient/history",
+    fullPath: "/patient/consultations",
   },
   {
     label: "Medical Records",
