@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -19,6 +20,8 @@ from consultations.models import ConsultationRecord, PrescriptionItem, Requested
 
 class ConsultationRecordViewSet(viewsets.ModelViewSet):
     serializer_class = ConsultationRecordModelSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["appointment"]
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy', 'complete']:
@@ -50,7 +53,7 @@ class ConsultationRecordViewSet(viewsets.ModelViewSet):
         serializer.save(doctor=doctor_profile)
 
     @action(detail=True, methods=['post'])
-    def complete(self, request):
+    def complete(self, request, pk=None):
         consultation = self.get_object()
         if consultation.is_completed:
             return Response({"detail" : "Consultation is already completed"}
