@@ -14,6 +14,7 @@ import {
   getAppointment,
   rescheduleAppointment,
 } from '@/services/appointmentService'
+import { fetchConsultationByAppointment } from '@/services/consultationService'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -22,6 +23,7 @@ const route = useRoute()
 const appointmentId = computed(() => route.params.id)
 
 const appointment = ref(null)
+const consultationId = ref(null)
 const loading = ref(true)
 const cancelling = ref(false)
 const rescheduling = ref(false)
@@ -115,9 +117,22 @@ function syncFormFromAppointment() {
 async function loadAppointment() {
   loading.value = true
   errorMessage.value = ''
+  consultationId.value = null
 
   try {
     appointment.value = await getAppointment(appointmentId.value)
+    consultationId.value = appointment.value?.consultation_id ?? null
+
+    if (appointment.value?.status === 'completed' && !consultationId.value) {
+      try {
+        const consultation = await fetchConsultationByAppointment(appointmentId.value)
+        consultationId.value = consultation?.id ?? null
+      } catch (error) {
+        if (error?.response?.status !== 404) {
+          throw error
+        }
+      }
+    }
     syncFormFromAppointment()
   } catch (error) {
     errorMessage.value = getApiErrorMessage(error, 'Unable to load appointment details.')
@@ -254,6 +269,13 @@ onMounted(loadAppointment)
             <p class="text-xs font-medium uppercase text-gray-500">Created</p>
             <p class="font-medium text-gray-900">{{ formatDateTime(appointment.created_at) }}</p>
           </div>
+        </CardContent>
+        <CardContent v-if="appointment.status === 'completed' && consultationId">
+          <Button as-child>
+            <RouterLink :to="`/patient/consultations/${consultationId}/summary`">
+              View Consultation Summary
+            </RouterLink>
+          </Button>
         </CardContent>
       </Card>
 

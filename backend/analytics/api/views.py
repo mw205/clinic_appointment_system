@@ -56,7 +56,7 @@ class AnalyticsSummaryViewSet(viewsets.ViewSet):
         writer.writerow(["ID", "Patient", "Doctor", "Start Time", "End Time", "Status"])
         appointments = Appointment.objects.select_related(
             "patient__user",
-            "patient__doctor",
+            "doctor__user",
         ).all()
 
         for appt in appointments:
@@ -73,7 +73,7 @@ class AnalyticsSummaryViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="export/consultations")
     def export_consultations(self, request):
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="appointments.csv"'
+        response["Content-Disposition"] = 'attachment; filename="consultations.csv"'
         writer = csv.writer(response)
         writer.writerow(["ID", "Appointment ID", "Patient", "Doctor", "Diagnosis", "Completed", "Completed At",])
         consultations = ConsultationRecord.objects.select_related(
