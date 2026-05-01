@@ -38,6 +38,7 @@ def get_role_filtered_appointments_queryset(user):
     queryset = Appointment.objects.select_related(
         "patient__user",
         "doctor__user",
+        "consultation",
     )
 
     if not user or not user.is_authenticated:
