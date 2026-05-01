@@ -45,6 +45,16 @@ const router = createRouter({
           component: () => import('@/views/doctor/AppointmentsView.vue')
         },
         {
+          path: '/doctor/records',
+          name: 'DoctorMedicalRecords',
+          component: () => import('@/views/doctor/MedicalRecordsView.vue')
+        },
+        {
+          path: '/doctor/appointments/:id',
+          name: 'DoctorAppointmentDetails',
+          component: () => import('@/views/shared/AppointmentDetailsView.vue'),
+        },
+        {
           path: '/doctor/appointments/:appointmentId/consultation',
           name: 'ConsultationForm',
           component: () => import('@/views/doctor/ConsultationFormView.vue'),
@@ -69,6 +79,11 @@ const router = createRouter({
           path: '/receptionist/appointments',
           name: 'ReceptionistAppointments',
           component: () => import('@/views/receptionist/AppointmentsView.vue'),
+        },
+        {
+          path: '/receptionist/appointments/:id',
+          name: 'ReceptionistAppointmentDetails',
+          component: () => import('@/views/shared/AppointmentDetailsView.vue'),
         },
         {
           path: '/receptionist/schedules',
@@ -109,7 +124,7 @@ const router = createRouter({
         {
           path: '/patient/appointments/:id',
           name: 'PatientAppointmentDetails',
-          component: () => import('@/views/patient/PatientAppointmentDetailsView.vue'),
+          component: () => import('@/views/shared/AppointmentDetailsView.vue'),
           meta: { requiresAuth: true, role: 'Patient' },
         },
         {
@@ -142,7 +157,7 @@ const router = createRouter({
         {
           path: '/appointments/:id',
           name: 'AppointmentDetails',
-          component: () => import('@/views/patient/PatientAppointmentDetailsView.vue'),
+          component: () => import('@/views/shared/AppointmentDetailsView.vue'),
           meta: { requiresAuth: true, role: 'Patient' },
         },
         {

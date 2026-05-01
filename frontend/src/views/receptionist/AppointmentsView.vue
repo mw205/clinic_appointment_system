@@ -13,5 +13,7 @@ const fixedParams = {
     fetch-mode="list"
     :fixed-params="fixedParams"
     :can-confirm="true"
+    :can-view-record="true"
+    :use-single-date-filter="true"
   />
 </template>
