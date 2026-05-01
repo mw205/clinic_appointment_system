@@ -33,3 +33,4 @@ __pycache__/
 .continue/
 .codex
 .Clinicappointmentsystemui/
+.pnpm-store
