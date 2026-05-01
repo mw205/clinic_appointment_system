@@ -6,19 +6,15 @@ import AppointmentsView from "../shared/AppointmentsView.vue";
 
 const { user } = useAuth();
 
-const today = new Date().toLocaleDateString('en-CA')
 const doctorId = computed(() => user.value?.profile_id);
 const fixedParams = computed(() => {
   if (!doctorId.value) {
-    return {
-      date: today,
-      ordering: "start_time,check_in_time",
-    };
+    return {};
   }
 
   return {
     doctor_id: doctorId.value,
-    date: today,
+    status: "completed",
     ordering: "start_time,check_in_time",
   };
 });
@@ -27,12 +23,13 @@ const fixedParams = computed(() => {
 <template>
   <AppointmentsView
     v-if="doctorId"
-    :can-start-consultation="true"
-    :can-view-record="true"
-    :fixed-params="fixedParams"
-    :use-time-range-filters="true"
-    fetch-mode="list"
     mode="doctor"
-    title="Today's Schedule"
+    title="Medical Records"
+    fetch-mode="list"
+    :fixed-params="fixedParams"
+    :can-view-record="true"
+    :show-tabs="false"
+    :show-status-filter="false"
+    :use-single-date-filter="true"
   />
 </template>

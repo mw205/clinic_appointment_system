@@ -16,5 +16,6 @@ const fixedParams = {
     :fixed-params="fixedParams"
     :can-confirm="true"
     :use-time-range-filters="true"
+    :can-view-record="true"
   />
 </template>
