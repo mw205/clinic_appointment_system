@@ -64,6 +64,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  useSingleDateFilter: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const store = useAppointmentsStore();
@@ -93,6 +97,7 @@ const {
 } = useAppointments(appointments, {
   includeDoctorNameFilter: showDoctorFilter.value,
   useTimeRangeFilters: props.useTimeRangeFilters,
+  useSingleDateFilter: props.useSingleDateFilter,
   baseDate: rangeFilterBaseDate.value,
 });
 
@@ -128,7 +133,7 @@ const hasVisibleFilters = computed(() => {
     filters.value.patientName.trim() !== ""
     || (showDoctorFilter.value && filters.value.doctorName.trim() !== "")
     || filters.value.startDate !== ""
-    || filters.value.endDate !== ""
+    || (!props.useSingleDateFilter && filters.value.endDate !== "")
     || (props.showStatusFilter && filters.value.status !== "all")
   );
 });
@@ -193,10 +198,13 @@ const handleComplete = (id) => {
   router.push(`/doctor/appointments/${id}/consultation`);
 };
 
-const handleViewRecord = () => {
-  if (!props.canViewRecord) {
+const handleViewRecord = (id) => {
+  if (props.mode === "doctor") {
+    router.push(`/doctor/appointments/${id}`);
     return;
   }
+
+  router.push(`/receptionist/appointments/${id}`);
 };
 
 const handleNoShow = async (id) => {
@@ -294,7 +302,15 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="space-y-2">
-            <Label for="start-date-filter">{{ useTimeRangeFilters ? "Start Time" : "Start Date" }}</Label>
+            <Label for="start-date-filter">
+              {{
+                useTimeRangeFilters
+                  ? "Start Time"
+                  : useSingleDateFilter
+                    ? "Date"
+                    : "Start Date"
+              }}
+            </Label>
             <Input
               id="start-date-filter"
               v-model="filters.startDate"
@@ -302,7 +318,7 @@ onBeforeUnmount(() => {
             />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!useSingleDateFilter" class="space-y-2">
             <Label for="end-date-filter">{{ useTimeRangeFilters ? "End Time" : "End Date" }}</Label>
             <Input
               id="end-date-filter"

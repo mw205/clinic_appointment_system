@@ -62,8 +62,9 @@ const waitTime = computed(() => props.calculateWaitTime(props.appointment.check_
           <div class="flex items-center gap-4 mt-2 text-sm text-gray-600">
             <span class="flex items-center gap-1">
               <Clock class="w-4 h-4" />
-              {{appointment.status === "requested" ? formatDate(appointment.start_time) : ""}}
-              {{ formatTime(appointment.start_time) }} - {{ formatTime(appointment.end_time) }}
+<!--              {{appointment.status === "requested" ? formatDate(appointment.start_time) : ""}}-->
+<!--              {{ formatTime(appointment.start_time) }} - {{ formatTime(appointment.end_time) }}-->
+              {{ formatDateTime(appointment.start_time) }} - {{ formatTime(appointment.end_time) }}
             </span>
           </div>
         </div>

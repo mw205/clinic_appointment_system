@@ -1,7 +1,12 @@
 import { computed, ref } from "vue";
 
 export function useAppointments(dailyQueue, options = {}) {
-  const { includeDoctorNameFilter = false, useTimeRangeFilters = false, baseDate = "" } = options;
+  const {
+    includeDoctorNameFilter = false,
+    useTimeRangeFilters = false,
+    useSingleDateFilter = false,
+    baseDate = "",
+  } = options;
 
   const filters = ref({
     status: "all",
@@ -30,7 +35,7 @@ export function useAppointments(dailyQueue, options = {}) {
     || filters.value.patientName.trim() !== ""
     || (includeDoctorNameFilter && filters.value.doctorName.trim() !== "")
     || filters.value.startDate !== ""
-    || filters.value.endDate !== "",
+    || (!useSingleDateFilter && filters.value.endDate !== ""),
   );
 
   const requestParams = computed(() => {
@@ -49,13 +54,15 @@ export function useAppointments(dailyQueue, options = {}) {
       params.doctor_name = filters.value.doctorName.trim();
     }
 
-    if (filters.value.startDate) {
+    if (filters.value.startDate && useSingleDateFilter) {
+      params.date = filters.value.startDate;
+    } else if (filters.value.startDate) {
       params.start_from = useTimeRangeFilters
         ? `${effectiveBaseDate}T${filters.value.startDate}:00`
         : `${filters.value.startDate}T00:00:00`;
     }
 
-    if (filters.value.endDate) {
+    if (filters.value.endDate && !useSingleDateFilter) {
       params.start_to = useTimeRangeFilters
         ? `${effectiveBaseDate}T${filters.value.endDate}:59`
         : `${filters.value.endDate}T23:59:59`;

@@ -43,8 +43,8 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
             "start_time",
             "end_time",
             "status",
-            "consultation_id",
             "created_at",
+            "consultation_id",
             "reschedule_history",
         ]
 
@@ -65,9 +65,8 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
         }
 
     def get_consultation_id(self, obj):
-        if not hasattr(obj, "consultation"):
-            return None
-        return obj.consultation.id
+        consultation = getattr(obj, "consultation", None)
+        return consultation.id if consultation else None
 
 
 class AppointmentBookingRequestSerializer(serializers.Serializer):

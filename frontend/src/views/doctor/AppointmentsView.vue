@@ -27,5 +27,7 @@ const fixedParams = computed(() => {
     fetch-mode="list"
     :fixed-params="fixedParams"
     :can-start-consultation="true"
+    :can-view-record="true"
+    :use-single-date-filter="true"
   />
 </template>
