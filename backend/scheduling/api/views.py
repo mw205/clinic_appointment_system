@@ -22,6 +22,11 @@ class DoctorScheduleViewSet(viewsets.ModelViewSet):
     filterset_fields = ["doctor", "day_of_week"]
     permission_classes = [IsAuthenticated, IsDoctorOrReceptionist]
 
+    def get_permissions(self):
+        if self.action in ["list", "retrieve", "available"]:
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsDoctorOrReceptionist()]
+
     @action(
         detail=False,
         methods=["GET"],
