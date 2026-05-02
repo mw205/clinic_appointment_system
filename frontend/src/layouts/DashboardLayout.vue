@@ -80,7 +80,7 @@ const NAV_ITEMS = [
     label: "Doctor Schedules",
     icon: ClipboardList,
     path: "schedules",
-    roles: ["Receptionist", "Admin", "Doctor"],
+    roles: ["Receptionist", "Doctor"],
   },
   { label: "Analytics", icon: BarChart3, path: "analytics", roles: ["Admin"] },
   { label: "User Management", icon: Users, path: "users", roles: ["Admin", "Receptionist"], fullPath: "/admin/users" },
