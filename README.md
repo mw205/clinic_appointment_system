@@ -1,96 +1,105 @@
-# clinic_appointment_system
+# HealthCare Clinic Appointment System
 
-Monorepo for a clinic appointment system with:
+A comprehensive, full-stack clinic appointment management system designed for distinct user roles: Patients, Doctors, Receptionists, and Administrators.
 
-- Backend: Django, Django REST Framework, MySQL
-- Frontend: Vue 3, Vite, pnpm
+## 🚀 Tech Stack
 
-## Current Readiness
+- **Backend:** Django, Django REST Framework (DRF), MySQL
+- **Frontend:** Vue 3 (Composition API), Vite, Tailwind CSS, shadcn-vue
+- **Authentication:** Secure HttpOnly Cookies (JWT-based) with automatic silent refresh
+- **Package Manager:** pnpm
 
-As checked on 2026-04-18, the repository is usable as a development starting point, but it is not fully provisioned against the intended stack yet.
+## ✨ Key Features
 
-What is working now:
+- **Robust Authentication Flow:**
+  - Secure HttpOnly cookie-based sessions (protects against XSS vulnerabilities).
+  - Automatic, transparent token refreshing via Axios interceptors.
+  - Complete flows for Login, Signup, Password Reset, and Email Verification (with rate-limiting and countdown timers).
+- **Role-Based Access Control (RBAC):**
+  - Distinct portals and dashboard navigation tailored for `Admin`, `Receptionist`, `Doctor`, and `Patient` roles.
+  - Granular API permission classes enforcing strict backend data access.
+- **User Administration Panel:**
+  - Dedicated interface for Admins and Receptionists to view and manage users.
+  - Advanced DRF-powered filtering (Search by name/email, Filter by Role, Filter by Status).
+  - Server-side pagination with dynamic UI controls.
+  - UI strictly reflects backend constraints (e.g., Receptionists are restricted to read-only views).
+- **Profile & Account Management:**
+  - Dynamic profile forms rendering distinct fields based on user role (e.g., Doctors have specialties, Patients have blood types).
+  - Seamless password change and security flows.
 
-- Django project exists and passes `python manage.py check`
-- Vue frontend installs and builds with `pnpm build`
-- Backend virtual environment and frontend dependencies already exist in this checkout
+### 🔜 Upcoming Team Modules (Work in Progress)
 
-What still needs attention:
+*(This section is reserved for the rest of the team to document their upcoming features)*
 
-- `frontend/.env` is missing and must define `VITE_API_BASE_URL`
-- `frontend/components.json` is missing, so `shadcn-vue` does not appear to be initialized yet
-- No project stylesheet currently contains the Tailwind `@tailwind` directives
-- `backend/.env` is missing, though it is currently optional because the backend does not read environment variables yet
-- The backend is still scaffold-level: only the Django admin route is defined and no API routes are wired yet
+- **[Module Name e.g., Appointment Scheduling]:**
+  - *To be added by [Team Member Name]*
+- **[Module Name e.g., Medical Records / Prescriptions]:**
+  - *To be added by [Team Member Name]*
+- **[Module Name e.g., Billing & Invoicing]:**
+  - *To be added by [Team Member Name]*
 
-## Prerequisites
+## 🛠️ Prerequisites
 
 - Python 3.9+
 - Node.js `^20.19.0 || >=22.12.0`
 - `pnpm`
+- MySQL (or SQLite for local rapid dev)
 
-## Repository Layout
+## 📦 Repository Layout
 
 ```text
 .
 ├── backend
-│   ├── .venv
-│   ├── core
-│   ├── api
+│   ├── api                 # DRF serializers, views, and core business logic
+│   ├── accounts            # Custom user models and authentication workflows
 │   ├── manage.py
 │   └── requirements.txt
 ├── frontend
 │   ├── src
+│   │   ├── components      # UI components (shadcn-vue)
+│   │   ├── composables     # Global state and auth logic (useAuth.js)
+│   │   ├── layouts         # Dashboard and Auth wrappers
+│   │   ├── services        # Axios API configurations
+│   │   └── views           # Page-level components organized by feature
 │   ├── package.json
 │   ├── tailwind.config.js
-│   └── pnpm-lock.yaml
-└── diagnose_setup.py
+│   └── vite.config.js
+└── diagnose_setup.py       # Local dev health-checker
 ```
 
-## Backend Setup
+## ⚙️ Quick Start Guide
 
-From the repository root:
+### 1. Backend Setup
 
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-Optional backend environment file:
-
-```bash
 cp .env.example .env
 ```
 
-If `.env.example` is empty, that is expected in the current state of the repo. The backend does not currently require environment variables to boot.
+*Note: Ensure your `.env` contains the correct database credentials if using MySQL.*
 
-Apply migrations:
-
+**Database Seeding:**
+To quickly populate the database with default roles, admin users, and dummy data:
 ```bash
+python manage.py flush           # WARNING: Deletes existing data
+python manage.py setup_roles     # Creates Patient, Doctor, Receptionist, Admin groups
+python manage.py makemigrations
 python manage.py migrate
+python seed_data.py
 ```
 
-Start the backend:
-
+**Start the API:**
 ```bash
 python manage.py runserver
 ```
+*The backend will be available at `http://127.0.0.1:8000/`*
 
-Backend default URL:
+### 2. Frontend Setup
 
-```text
-http://127.0.0.1:8000/
-```
-
-Current routed page:
-
-- Django admin at `/admin/`
-
-## Frontend Setup
-
-From the repository root:
+In a new terminal window:
 
 ```bash
 cd frontend
@@ -98,120 +107,25 @@ pnpm install
 cp .env.example .env
 ```
 
-Verify `frontend/.env` contains:
-
+Verify your `frontend/.env` points to the Django backend. Specifically, ensure the API base URL is set correctly:
 ```bash
-VITE_API_BASE_URL=http://localhost:8000/
+VITE_API_BASE_URL=http://localhost:8000/api
 ```
 
-Start the frontend:
-
+**Start the Development Server:**
 ```bash
 pnpm dev
 ```
+*The frontend will be available at `http://127.0.0.1:5173/`*
 
-Frontend default URL:
+## 🩺 Development Health Check
 
-```text
-http://127.0.0.1:5173/
-```
-
-## Recommended Next Frontend Steps
-
-To align the project with the intended stack, complete these before building real UI work:
-
-1. Initialize `shadcn-vue` so `frontend/components.json` is generated.
-2. Add a global stylesheet such as `frontend/src/assets/main.css`.
-3. Add these Tailwind directives to that stylesheet:
-
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
-
-4. Import the stylesheet from `frontend/src/main.js`.
-
-Example:
-
-```js
-import './assets/main.css'
-```
-
-## Start Both Apps
-
-Use two terminals.
-
-Terminal 1:
-
-```bash
-cd backend
-source .venv/bin/activate
-python manage.py runserver
-```
-
-Terminal 2:
-
-```bash
-cd frontend
-pnpm dev
-```
-
-## Development Health Check
-
-Run the diagnostic CLI from the repository root:
+You can run the diagnostic CLI from the repository root to verify your environment is correctly configured:
 
 ```bash
 python3 diagnose_setup.py
 ```
-
-Or:
-
-```bash
-./diagnose_setup.py
-```
-
-The script checks:
-
-- Root files such as `.gitignore` and `README.md`
-- Backend setup such as `.venv`, `requirements.txt`, `.env`, `manage.py`, CORS settings, and `db.sqlite3`
-- Frontend setup such as `node_modules`, `.env`, `VITE_API_BASE_URL`, Tailwind version, `components.json`, and Tailwind directives
-
-Exit behavior:
-
-- Exit code `0`: no critical setup failures
-- Exit code `1`: one or more required setup items are missing
-
-## Quick Start
-
-If you are cloning the repo fresh, the shortest path is:
-
-```bash
-git clone git@github.com:mw205/clinic_appointment_system.git
-cd clinic_appointment_system
-
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-
-cd ../frontend
-pnpm install
-cp .env.example .env
-
-cd ..
-python3 diagnose_setup.py
-```
+This script acts as an automated checklist and validates missing virtual environments, node modules, required `.env` flags, and CORS configurations.
 
 ---
-## Database seeding
-```bash
-cd ./backend
-python3 manage.py flush ##to delete the database's content
-python3 manage.py setup_roles #setup roles for the project
-python3 manage.py makemigrations
-python3 manage.py migrate
-python3 seed_data.py
-```
-Then start backend and frontend in separate terminals as shown above.
+*Built by mw205 team.*
