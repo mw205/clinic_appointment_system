@@ -1,217 +1,133 @@
-# clinic_appointment_system
+# Clinic Appointment System
 
-Monorepo for a clinic appointment system with:
+A comprehensive, role-based clinic management and appointment system. This monorepo contains a robust Django REST API and a modern Vue 3 frontend.
 
-- Backend: Django, Django REST Framework, MySQL
-- Frontend: Vue 3, Vite, pnpm
+## Project Status
 
-## Current Readiness
+The project is **functional** and supports role-based access for Admins, Doctors, Receptionists, and Patients. It includes a complete set of features from appointment booking to consultation management and analytics.
 
-As checked on 2026-04-18, the repository is usable as a development starting point, but it is not fully provisioned against the intended stack yet.
+## Tech Stack
 
-What is working now:
+### Backend
+- **Framework:** [Django 4.2](https://www.djangoproject.com/) & [Django REST Framework](https://www.django-rest-framework.org/)
+- **Database:** MySQL
+- **Authentication:** JWT (JSON Web Tokens) with rotation and blacklisting
+- **Background Tasks:** Email services (configured for console output by default)
+- **Tools:** `django-filter`, `django-extensions`, `faker` (for seeding)
 
-- Django project exists and passes `python manage.py check`
-- Vue frontend installs and builds with `pnpm build`
-- Backend virtual environment and frontend dependencies already exist in this checkout
+### Frontend
+- **Framework:** [Vue 3](https://vuejs.org/) (Composition API)
+- **Build Tool:** [Vite](https://vitejs.dev/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/) & [Shadcn-Vue](https://www.shadcn-vue.com/)
+- **State Management:** [Pinia](https://pinia.vuejs.org/)
+- **Form Handling:** [VeeValidate](https://vee-validate.logaretm.com/v4/) & [Zod](https://zod.dev/)
 
-What still needs attention:
+## Features
 
-- `frontend/.env` is missing and must define `VITE_API_BASE_URL`
-- `frontend/components.json` is missing, so `shadcn-vue` does not appear to be initialized yet
-- No project stylesheet currently contains the Tailwind `@tailwind` directives
-- `backend/.env` is missing, though it is currently optional because the backend does not read environment variables yet
-- The backend is still scaffold-level: only the Django admin route is defined and no API routes are wired yet
+- **🔐 Multi-Role RBAC:**
+  - **Admin:** Dashboard, user management, and system-wide analytics.
+  - **Doctor:** Daily appointment queue, patient medical records, and consultation forms (prescriptions & tests).
+  - **Receptionist:** Appointment scheduling, rescheduling, and patient check-in.
+  - **Patient:** Online booking, personal appointment history, and consultation summaries.
+- **📅 Appointment Management:** Comprehensive booking flow with doctor availability, slot durations, and buffer times.
+- **📧 Communication:** Email verification and password reset workflows.
+- **📊 Analytics:** Visualized data for administrative insights.
 
 ## Prerequisites
 
-- Python 3.9+
-- Node.js `^20.19.0 || >=22.12.0`
-- `pnpm`
+- **Python:** 3.9+
+- **Node.js:** ^20.19.0 || >=22.12.0
+- **Package Manager:** `pnpm`
+- **Database:** MySQL
 
 ## Repository Layout
 
 ```text
 .
-├── backend
-│   ├── .venv
-│   ├── core
-│   ├── api
-│   ├── manage.py
-│   └── requirements.txt
-├── frontend
-│   ├── src
-│   ├── package.json
-│   ├── tailwind.config.js
-│   └── pnpm-lock.yaml
-└── diagnose_setup.py
+├── backend/              # Django Project
+│   ├── accounts/         # User models, RBAC, and Profiles
+│   ├── appointments/     # Booking logic and Appointment models
+│   ├── scheduling/       # Doctor schedules and slot generation
+│   ├── consultations/    # Medical records and prescriptions
+│   ├── analytics/        # Business intelligence logic
+│   └── core/             # Project settings and configuration
+├── frontend/             # Vue 3 Project
+│   ├── src/assets/       # Global styles and assets
+│   ├── src/components/   # Reusable UI components (Shadcn)
+│   ├── src/views/        # Role-based page views
+│   └── src/stores/       # Pinia state management
+└── diagnose_setup.py     # Diagnostic tool
 ```
 
-## Backend Setup
+## Setup Instructions
 
-From the repository root:
+### 1. Backend Setup
 
 ```bash
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
 pip install -r requirements.txt
-```
-
-Optional backend environment file:
-
-```bash
 cp .env.example .env
 ```
 
-If `.env.example` is empty, that is expected in the current state of the repo. The backend does not currently require environment variables to boot.
+**Note:** Update `backend/.env` with your MySQL database credentials.
 
-Apply migrations:
-
-```bash
-python manage.py migrate
-```
-
-Start the backend:
+### 2. Database Initialization & Seeding
 
 ```bash
-python manage.py runserver
-```
+# Initialize roles and permissions
+python manage.py setup_roles
 
-Backend default URL:
-
-```text
-http://127.0.0.1:8000/
-```
-
-Current routed page:
-
-- Django admin at `/admin/`
-
-## Frontend Setup
-
-From the repository root:
-
-```bash
-cd frontend
-pnpm install
-cp .env.example .env
-```
-
-Verify `frontend/.env` contains:
-
-```bash
-VITE_API_BASE_URL=http://localhost:8000/
-```
-
-Start the frontend:
-
-```bash
-pnpm dev
-```
-
-Frontend default URL:
-
-```text
-http://127.0.0.1:5173/
-```
-
-## Recommended Next Frontend Steps
-
-To align the project with the intended stack, complete these before building real UI work:
-
-1. Initialize `shadcn-vue` so `frontend/components.json` is generated.
-2. Add a global stylesheet such as `frontend/src/assets/main.css`.
-3. Add these Tailwind directives to that stylesheet:
-
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
-
-4. Import the stylesheet from `frontend/src/main.js`.
-
-Example:
-
-```js
-import './assets/main.css'
-```
-
-## Start Both Apps
-
-Use two terminals.
-
-Terminal 1:
-
-```bash
-cd backend
-source .venv/bin/activate
-python manage.py runserver
-```
-
-Terminal 2:
-
-```bash
-cd frontend
-pnpm dev
-```
-
-## Development Health Check
-
-Run the diagnostic CLI from the repository root:
-
-```bash
-python3 diagnose_setup.py
-```
-
-Or:
-
-```bash
-./diagnose_setup.py
-```
-
-The script checks:
-
-- Root files such as `.gitignore` and `README.md`
-- Backend setup such as `.venv`, `requirements.txt`, `.env`, `manage.py`, CORS settings, and `db.sqlite3`
-- Frontend setup such as `node_modules`, `.env`, `VITE_API_BASE_URL`, Tailwind version, `components.json`, and Tailwind directives
-
-Exit behavior:
-
-- Exit code `0`: no critical setup failures
-- Exit code `1`: one or more required setup items are missing
-
-## Quick Start
-
-If you are cloning the repo fresh, the shortest path is:
-
-```bash
-git clone git@github.com:mw205/clinic_appointment_system.git
-cd clinic_appointment_system
-
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Apply migrations
 python manage.py migrate
 
+# Seed the database with sample data (creates all roles)
+python seed_data.py
+```
+
+*Default password for all seeded users: `password123`*
+
+### 3. Frontend Setup
+
+```bash
 cd ../frontend
 pnpm install
 cp .env.example .env
+```
 
-cd ..
+Ensure `VITE_API_BASE_URL` in `frontend/.env` points to your backend (default: `http://localhost:8000/api/`).
+
+## Running the Application
+
+You will need two terminals running simultaneously.
+
+### Terminal 1: Backend
+```bash
+cd backend
+source .venv/bin/activate
+python manage.py runserver
+```
+
+### Terminal 2: Frontend
+```bash
+cd frontend
+pnpm dev
+```
+
+The application will be accessible at `http://localhost:5173`.
+
+## Development Tools
+
+### Diagnostics
+Run the diagnostic script from the root to verify your environment setup:
+```bash
 python3 diagnose_setup.py
 ```
 
----
-## Database seeding
+### Linting & Formatting
 ```bash
-cd ./backend
-python3 manage.py flush ##to delete the database's content
-python3 manage.py setup_roles #setup roles for the project
-python3 manage.py makemigrations
-python3 manage.py migrate
-python3 seed_data.py
+cd frontend
+pnpm lint    # Run linter
+pnpm format  # Run formatter (Prettier)
 ```
-Then start backend and frontend in separate terminals as shown above.
