@@ -122,6 +122,13 @@ const router = createRouter({
           meta: { requiresAuth: true, role: 'Patient' },
         },
         {
+          path: '/patient/consultations',
+          name: 'PatientConsultations',
+          component: () => import('@/views/patient/PatientAppointmentsView.vue'),
+          props: { mode: 'consultations' },
+          meta: { requiresAuth: true, role: 'Patient' },
+        },
+        {
           path: '/patient/appointments/:id',
           name: 'PatientAppointmentDetails',
           component: () => import('@/views/shared/AppointmentDetailsView.vue'),
@@ -146,6 +153,13 @@ const router = createRouter({
           name: 'AppointmentsHistory',
           component: () => import('@/views/patient/PatientAppointmentsView.vue'),
           props: { mode: 'history' },
+          meta: { requiresAuth: true, role: 'Patient' },
+        },
+        {
+          path: '/appointments/consultations',
+          name: 'AppointmentsConsultations',
+          component: () => import('@/views/patient/PatientAppointmentsView.vue'),
+          props: { mode: 'consultations' },
           meta: { requiresAuth: true, role: 'Patient' },
         },
         {

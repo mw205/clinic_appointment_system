@@ -31,6 +31,7 @@ class Appointment(models.Model):
         choices=Status.choices,
         default=Status.REQUESTED,
     )
+    is_test_data = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

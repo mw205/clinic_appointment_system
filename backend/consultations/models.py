@@ -16,6 +16,7 @@ class ConsultationRecord(models.Model):
     diagnosis = models.TextField()
     notes = models.TextField(blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    is_test_data = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

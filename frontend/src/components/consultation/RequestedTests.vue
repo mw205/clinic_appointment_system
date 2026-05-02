@@ -37,18 +37,18 @@ function updateItem(index, field, value) {
       class="flex gap-2 items-center p-3 rounded-lg border bg-muted/30"
     >
       <Input
-        placeholder="Test name "
-        :value="item.test_name"
-        @input="updateItem(index, 'test_name', $event.target.value)"
+        placeholder="Test name"
+        :model-value="item.test_name"
+        @update:model-value="(value) => updateItem(index, 'test_name', value)"
       />
       <Input
         placeholder="Notes (optional)"
-        :value="item.notes"
-        @input="updateItem(index, 'notes', $event.target.value)"
+        :model-value="item.notes"
+        @update:model-value="(value) => updateItem(index, 'notes', value)"
       />
-      <Button variant="destructive" size="sm" @click="removeItem(index)">✕</Button>
+      <Button type="button" variant="destructive" size="sm" @click="removeItem(index)">x</Button>
     </div>
 
-    <Button variant="outline" size="sm" class="w-fit" @click="addItem"> Add Test ➕ </Button>
+    <Button type="button" variant="outline" size="sm" class="w-fit" @click="addItem">Add Test +</Button>
   </div>
 </template>

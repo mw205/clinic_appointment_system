@@ -32,6 +32,7 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
     patient = serializers.SerializerMethodField()
     doctor = serializers.SerializerMethodField()
     consultation_id = serializers.SerializerMethodField()
+    consultation_completed = serializers.SerializerMethodField()
     reschedule_history = RescheduleHistorySerializer(many=True, read_only=True)
 
     class Meta:
@@ -45,6 +46,7 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
             "consultation_id",
+            "consultation_completed",
             "reschedule_history",
         ]
 
@@ -67,6 +69,10 @@ class AppointmentReadSerializer(serializers.ModelSerializer):
     def get_consultation_id(self, obj):
         consultation = getattr(obj, "consultation", None)
         return consultation.id if consultation else None
+
+    def get_consultation_completed(self, obj):
+        consultation = getattr(obj, "consultation", None)
+        return bool(consultation and consultation.completed_at is not None)
 
 
 class AppointmentBookingRequestSerializer(serializers.Serializer):

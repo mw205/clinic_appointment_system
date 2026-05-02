@@ -41,31 +41,31 @@ function updateItem(index, field, value) {
     >
       <Input
         placeholder="Drug name"
-        :value="item.drug"
-        @input="updateItem(index, 'drug', $event.target.value)"
+        :model-value="item.drug"
+        @update:model-value="(value) => updateItem(index, 'drug', value)"
       />
       <Input
         placeholder="Dose"
-        :value="item.dose"
-        @input="updateItem(index, 'dose', $event.target.value)"
+        :model-value="item.dose"
+        @update:model-value="(value) => updateItem(index, 'dose', value)"
       />
       <Input
         placeholder="Frequency"
-        :value="item.duration"
-        @input="updateItem(index, 'duration', $event.target.value)"
+        :model-value="item.duration"
+        @update:model-value="(value) => updateItem(index, 'duration', value)"
       />
       <div class="flex gap-2">
         <Input
           placeholder="Instructions"
-          :value="item.instructions"
-          @input="updateItem(index, 'instructions', $event.target.value)"
+          :model-value="item.instructions"
+          @update:model-value="(value) => updateItem(index, 'instructions', value)"
         />
-        <Button variant="destructive" size="sm" @click="removeItem(index)">✕</Button>
+        <Button type="button" variant="destructive" size="sm" @click="removeItem(index)">x</Button>
       </div>
     </div>
 
-    <Button variant="outline" size="sm" class="w-fit" @click="addItem">
-      Add Prescription ➕
+    <Button type="button" variant="outline" size="sm" class="w-fit" @click="addItem">
+      Add Prescription +
     </Button>
   </div>
 </template>

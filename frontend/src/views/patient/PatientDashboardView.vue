@@ -98,47 +98,60 @@ onMounted(loadAppointments);
           {{ errorMessage }}
         </div>
 
-        <div v-else class="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Consultation</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="appointment in appointments" :key="appointment.id">
-                <TableCell>
-                  <RouterLink
-                    :to="`/patient/appointments/${appointment.id}`"
-                    class="font-medium text-blue-700 hover:underline"
-                  >
-                    {{ appointment.doctor.name }}
-                  </RouterLink>
-                </TableCell>
-                <TableCell>{{ formatDateTime(appointment.start_time) }}</TableCell>
-                <TableCell>
-                  <Badge :variant="statusVariant(appointment.status)">
-                    {{ appointment.status }}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <RouterLink
-                    :to="`/patient/consultations/${appointment.id}/summary`"
-                    class="inline-flex items-center rounded-md border border-blue-200 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50"
-                  >
+        <Table v-else>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Doctor</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead class="text-right">Consultation</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="appointment in appointments" :key="appointment.id">
+              <TableCell>
+                <RouterLink
+                  :to="`/patient/appointments/${appointment.id}`"
+                  class="font-medium text-blue-700 hover:underline"
+                >
+                  {{ appointment.doctor.name }}
+                </RouterLink>
+              </TableCell>
+              <TableCell>{{ formatDateTime(appointment.start_time) }}</TableCell>
+              <TableCell>
+                <Badge :variant="statusVariant(appointment.status)">
+                  {{ appointment.status }}
+                </Badge>
+              </TableCell>
+              <TableCell class="text-right">
+                <Button
+                  v-if="
+                    appointment.status === 'completed'
+                    && appointment.consultation_id
+                    && appointment.consultation_completed
+                  "
+                  as-child
+                  size="sm"
+                  class="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                >
+                  <RouterLink :to="`/patient/consultations/${appointment.consultation_id}/summary`">
                     View Consultation
                   </RouterLink>
-                </TableCell>
-              </TableRow>
-              <TableEmpty v-if="!appointments.length">
-                No appointments found.
-              </TableEmpty>
-            </TableBody>
-          </Table>
-        </div>
+                </Button>
+                <span
+                  v-else-if="appointment.status === 'completed'"
+                  class="inline-flex rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700"
+                >
+                  Not completed yet
+                </span>
+                <span v-else class="text-xs text-muted-foreground">No Consultation Yet</span>
+              </TableCell>
+            </TableRow>
+            <TableEmpty v-if="!appointments.length">
+              No appointments found.
+            </TableEmpty>
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   </div>
