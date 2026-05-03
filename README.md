@@ -1,131 +1,143 @@
-# HealthCare Clinic Appointment System
+# Clinic Appointment System
 
-A comprehensive, full-stack clinic appointment management system designed for distinct user roles: Patients, Doctors, Receptionists, and Administrators.
+A comprehensive, role-based clinic management and appointment system. This monorepo contains a robust Django REST API and a modern Vue 3 frontend.
 
-## 🚀 Tech Stack
+## Project Status
 
-- **Backend:** Django, Django REST Framework (DRF), MySQL
-- **Frontend:** Vue 3 (Composition API), Vite, Tailwind CSS, shadcn-vue
-- **Authentication:** Secure HttpOnly Cookies (JWT-based) with automatic silent refresh
-- **Package Manager:** pnpm
+The project is **functional** and supports role-based access for Admins, Doctors, Receptionists, and Patients. It includes a complete set of features from appointment booking to consultation management and analytics.
 
-## ✨ Key Features
+## Tech Stack
 
-- **Robust Authentication Flow:**
-  - Secure HttpOnly cookie-based sessions (protects against XSS vulnerabilities).
-  - Automatic, transparent token refreshing via Axios interceptors.
-  - Complete flows for Login, Signup, Password Reset, and Email Verification (with rate-limiting and countdown timers).
-- **Role-Based Access Control (RBAC):**
-  - Distinct portals and dashboard navigation tailored for `Admin`, `Receptionist`, `Doctor`, and `Patient` roles.
-  - Granular API permission classes enforcing strict backend data access.
-- **User Administration Panel:**
-  - Dedicated interface for Admins and Receptionists to view and manage users.
-  - Advanced DRF-powered filtering (Search by name/email, Filter by Role, Filter by Status).
-  - Server-side pagination with dynamic UI controls.
-  - UI strictly reflects backend constraints (e.g., Receptionists are restricted to read-only views).
-- **Profile & Account Management:**
-  - Dynamic profile forms rendering distinct fields based on user role (e.g., Doctors have specialties, Patients have blood types).
-  - Seamless password change and security flows.
+### Backend
 
-### 🔜 Upcoming Team Modules (Work in Progress)
+- **Framework:** [Django 4.2](https://www.djangoproject.com/) & [Django REST Framework](https://www.django-rest-framework.org/)
+- **Database:** MySQL
+- **Authentication:** JWT (JSON Web Tokens) with rotation and blacklisting
+- **Background Tasks:** Email services (configured for console output by default)
+- **Tools:** `django-filter`, `django-extensions`, `faker` (for seeding)
 
-*(This section is reserved for the rest of the team to document their upcoming features)*
+### Frontend
 
-- **[Module Name e.g., Appointment Scheduling]:**
-  - *To be added by [Team Member Name]*
-- **[Module Name e.g., Medical Records / Prescriptions]:**
-  - *To be added by [Team Member Name]*
-- **[Module Name e.g., Billing & Invoicing]:**
-  - *To be added by [Team Member Name]*
+- **Framework:** [Vue 3](https://vuejs.org/) (Composition API)
+- **Build Tool:** [Vite](https://vitejs.dev/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/) & [Shadcn-Vue](https://www.shadcn-vue.com/)
+- **State Management:** [Pinia](https://pinia.vuejs.org/)
+- **Form Handling:** [VeeValidate](https://vee-validate.logaretm.com/v4/) & [Zod](https://zod.dev/)
+
+## Features
+
+- **🔐 Multi-Role RBAC:**
+  - **Admin:** Dashboard, user management, and system-wide analytics.
+  - **Doctor:** Daily appointment queue, patient medical records, and consultation forms (prescriptions & tests).
+  - **Receptionist:** Appointment scheduling, rescheduling, and patient check-in.
+  - **Patient:** Online booking, personal appointment history, and consultation summaries.
+- **📅 Appointment Management:** Comprehensive booking flow with doctor availability, slot durations, and buffer times.
+- **📧 Communication:** Email verification and password reset workflows.
+- **📊 Analytics:** Visualized data for administrative insights.
 
 ## 🛠️ Prerequisites
 
-- Python 3.9+
-- Node.js `^20.19.0 || >=22.12.0`
-- `pnpm`
-- MySQL (or SQLite for local rapid dev)
+- **Python:** 3.9+
+- **Node.js:** ^20.19.0 || >=22.12.0
+- **Package Manager:** `pnpm`
+- **Database:** MySQL
 
 ## 📦 Repository Layout
 
 ```text
 .
-├── backend
-│   ├── api                 # DRF serializers, views, and core business logic
-│   ├── accounts            # Custom user models and authentication workflows
-│   ├── manage.py
-│   └── requirements.txt
-├── frontend
-│   ├── src
-│   │   ├── components      # UI components (shadcn-vue)
-│   │   ├── composables     # Global state and auth logic (useAuth.js)
-│   │   ├── layouts         # Dashboard and Auth wrappers
-│   │   ├── services        # Axios API configurations
-│   │   └── views           # Page-level components organized by feature
-│   ├── package.json
-│   ├── tailwind.config.js
-│   └── vite.config.js
-└── diagnose_setup.py       # Local dev health-checker
+├── backend/              # Django Project
+│   ├── accounts/         # User models, RBAC, and Profiles
+│   ├── appointments/     # Booking logic and Appointment models
+│   ├── scheduling/       # Doctor schedules and slot generation
+│   ├── consultations/    # Medical records and prescriptions
+│   ├── analytics/        # Business intelligence logic
+│   └── core/             # Project settings and configuration
+├── frontend/             # Vue 3 Project
+│   ├── src/assets/       # Global styles and assets
+│   ├── src/components/   # Reusable UI components (Shadcn)
+│   ├── src/views/        # Role-based page views
+│   └── src/stores/       # Pinia state management
+└── diagnose_setup.py     # Diagnostic tool
 ```
 
-## ⚙️ Quick Start Guide
+## Setup Instructions
 
 ### 1. Backend Setup
 
 ```bash
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
 pip install -r requirements.txt
 cp .env.example .env
 ```
 
-*Note: Ensure your `.env` contains the correct database credentials if using MySQL.*
+**Note:** Update `backend/.env` with your MySQL database credentials.
+
+### 2. Database Initialization & Seeding
 
 **Database Seeding:**
 To quickly populate the database with default roles, admin users, and dummy data:
+
 ```bash
-python manage.py flush           # WARNING: Deletes existing data
-python manage.py setup_roles     # Creates Patient, Doctor, Receptionist, Admin groups
-python manage.py makemigrations
+# Initialize roles and permissions
+python manage.py setup_roles
+
+# Apply migrations
 python manage.py migrate
+
+# Seed the database with sample data (creates all roles)
 python seed_data.py
 ```
 
-**Start the API:**
-```bash
-python manage.py runserver
-```
-*The backend will be available at `http://127.0.0.1:8000/`*
+_Default password for all seeded users: `password123`_
 
-### 2. Frontend Setup
-
-In a new terminal window:
+### 3. Frontend Setup
 
 ```bash
-cd frontend
+cd ../frontend
 pnpm install
 cp .env.example .env
 ```
 
-Verify your `frontend/.env` points to the Django backend. Specifically, ensure the API base URL is set correctly:
+Ensure `VITE_API_BASE_URL` in `frontend/.env` points to your backend (default: `http://localhost:8000/api/`).
+
+## Running the Application
+
+You will need two terminals running simultaneously.
+
+### Terminal 1: Backend
+
 ```bash
-VITE_API_BASE_URL=http://localhost:8000/api
+cd backend
+source .venv/bin/activate
+python manage.py runserver
 ```
 
-**Start the Development Server:**
+### Terminal 2: Frontend
+
 ```bash
+cd frontend
 pnpm dev
 ```
-*The frontend will be available at `http://127.0.0.1:5173/`*
 
-## 🩺 Development Health Check
+The application will be accessible at `http://localhost:5173`.
 
-You can run the diagnostic CLI from the repository root to verify your environment is correctly configured:
+## Development Tools
+
+### Diagnostics
+
+Run the diagnostic script from the root to verify your environment setup:
 
 ```bash
 python3 diagnose_setup.py
 ```
-This script acts as an automated checklist and validates missing virtual environments, node modules, required `.env` flags, and CORS configurations.
 
----
-*Built by mw205 team.*
+### Linting & Formatting
+
+```bash
+cd frontend
+pnpm lint    # Run linter
+pnpm format  # Run formatter (Prettier)
+```
